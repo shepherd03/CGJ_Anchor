@@ -17,6 +17,13 @@
       },
       "hash": "11836003a5e2ffcb7715ecec7e1fbb9d9cdb5bb8"
     },
+    "com.hinatayoki.yokiframe": {
+      "version": "https://github.com/HinataYoki/YokiFrame.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "e62d9457934c07941129ca4275c8b34a6551d487"
+    },
     "com.unity.2d.animation": {
       "version": "9.2.0",
       "depth": 1,

@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61dad3404d5852a42adc1375f98672b9, type: 3}
+  m_Name: YokiFrameRuntimeSettings
+  m_EditorClassIdentifier: 
+  mLogKit:
+    SaveLogInEditor: 0
+    SaveLogInPlayer: 1
+    EnableIMGUIInPlayer: 0
+    EnableEncryption: 1
+    MaxQueueSize: 20000
+    MaxSameLogCount: 50
+    MaxRetentionDays: 15
+    MaxFileSizeMB: 100
+    IMGUIMaxLogCount: 200
+    LogDirectory: 
+    EditorFileName: yoki_editor.log
+    PlayerFileName: yoki_player.log
+  mEntries: []
