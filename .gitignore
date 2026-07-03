@@ -59,10 +59,19 @@ ExportedObj/
 *.opendb
 *.VC.db
 
+# Keep required third-party Unity plugin binaries when the project vendors them.
+!/[Aa]ssets/DOTween/*.dll
+!/[Aa]ssets/DOTween/[Ee]ditor/*.dll
+!/[Aa]ssets/DOTween/*.mdb
+!/[Aa]ssets/DOTween/[Ee]ditor/*.mdb
+
 # Unity3D generated meta files
 *.pidb.meta
 *.pdb.meta
 *.mdb.meta
+
+!/[Aa]ssets/DOTween/*.mdb.meta
+!/[Aa]ssets/DOTween/[Ee]ditor/*.mdb.meta
 
 # Unity3D generated file on crash reports
 sysinfo.txt
