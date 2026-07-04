@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.Serialization;
 
 [DisallowMultipleComponent]
@@ -24,6 +25,18 @@ public sealed class FloatingUIFan : MonoBehaviour
     [SerializeField] private Ease moveEase = Ease.OutBack;
     [SerializeField] private Ease rotateEase = Ease.OutCubic;
     [SerializeField] private Ease scaleEase = Ease.OutBack;
+    [SerializeField] private float fadeInDuration = 0.35f;
+
+    [Header("Closing")]
+    [SerializeField] private float closeDuration = 0.55f;
+    [SerializeField] private float closeStagger = 0.08f;
+    [SerializeField] private Ease closeEase = Ease.InCubic;
+
+    [Header("Events")]
+    [SerializeField] private UnityEvent onOpenStarted = new UnityEvent();
+    [SerializeField] private UnityEvent onOpened = new UnityEvent();
+    [SerializeField] private UnityEvent onCloseStarted = new UnityEvent();
+    [SerializeField] private UnityEvent onClosed = new UnityEvent();
 
     [Header("Floating")]
     [FormerlySerializedAs("floatDistance")]
@@ -33,12 +46,21 @@ public sealed class FloatingUIFan : MonoBehaviour
     [SerializeField] private Ease floatEase = Ease.InOutSine;
 
     private RectTransform[] cards;
+    private CanvasGroup[] cardCanvasGroups;
     private CardLayout[] authoredLayouts;
+    private Sequence transitionSequence;
+
+    public bool IsOpen { get; private set; }
+    public UnityEvent OnOpenStarted => onOpenStarted;
+    public UnityEvent OnOpened => onOpened;
+    public UnityEvent OnCloseStarted => onCloseStarted;
+    public UnityEvent OnClosed => onClosed;
 
     private void Awake()
     {
         ClampSettings();
         cards = CollectCards();
+        cardCanvasGroups = GetOrCreateCanvasGroups(cards);
         authoredLayouts = CaptureAuthoredLayouts(cards);
     }
 
@@ -47,7 +69,7 @@ public sealed class FloatingUIFan : MonoBehaviour
     /// </summary>
     private void OnEnable()
     {
-        PlayOpenAnimation();
+        Open();
     }
 
     /// <summary>
@@ -55,7 +77,8 @@ public sealed class FloatingUIFan : MonoBehaviour
     /// </summary>
     private void OnDisable()
     {
-        CloseAnimation();
+        KillAllTweens();
+        IsOpen = false;
     }
 
     /// <summary>
@@ -64,12 +87,26 @@ public sealed class FloatingUIFan : MonoBehaviour
     [ContextMenu("Play Open Animation")]
     public void PlayOpenAnimation()
     {
+        Open();
+    }
+
+    /// <summary>
+    /// 对外打开接口：卡牌从中心渐显并展开。
+    /// </summary>
+    public void Open()
+    {
         EnsureCardsReady();
 
         if (cards == null || cards.Length == 0)
             return;
 
+        if (IsOpen && transitionSequence == null)
+            return;
+
         KillAllTweens();
+        IsOpen = false;
+        onOpenStarted.Invoke();
+        transitionSequence = DOTween.Sequence().SetTarget(this);
 
         for (int i = 0; i < cards.Length; i++)
         {
@@ -77,21 +114,42 @@ public sealed class FloatingUIFan : MonoBehaviour
             if (card == null)
                 continue;
 
+            card.gameObject.SetActive(true);
             CardLayout targetLayout = GetLayoutForDirection(i);
             card.anchoredPosition = expandOrigin;
             card.localEulerAngles = Vector3.zero;
             card.localScale = Vector3.one * collapsedScale;
 
-            float delay = i * stagger;
-            Sequence opening = DOTween.Sequence().SetTarget(card);
-            opening.AppendInterval(delay);
-            opening.Append(card.DOAnchorPos(targetLayout.Position, openDuration).SetEase(moveEase));
-            opening.Join(card.DOLocalRotate(new Vector3(0f, 0f, targetLayout.RotationZ), openDuration).SetEase(rotateEase));
-            opening.Join(card.DOScale(targetLayout.Scale, openDuration * 0.85f).SetEase(scaleEase));
+            CanvasGroup canvasGroup = cardCanvasGroups[i];
+            canvasGroup.alpha = 0f;
+            canvasGroup.interactable = false;
+            canvasGroup.blocksRaycasts = false;
 
-            int index = i;
-            opening.OnComplete(() => StartFloating(index));
+            float delay = i * stagger;
+            transitionSequence.Insert(delay, card.DOAnchorPos(targetLayout.Position, openDuration).SetEase(moveEase));
+            transitionSequence.Insert(delay, card.DOLocalRotate(new Vector3(0f, 0f, targetLayout.RotationZ), openDuration).SetEase(rotateEase));
+            transitionSequence.Insert(delay, card.DOScale(targetLayout.Scale, openDuration * 0.85f).SetEase(scaleEase));
+            transitionSequence.Insert(delay, canvasGroup.DOFade(1f, fadeInDuration).SetEase(Ease.OutQuad));
         }
+
+        transitionSequence.AppendCallback(() =>
+        {
+            transitionSequence = null;
+            IsOpen = true;
+
+            for (int i = 0; i < cards.Length; i++)
+            {
+                if (cardCanvasGroups[i] != null)
+                {
+                    cardCanvasGroups[i].interactable = true;
+                    cardCanvasGroups[i].blocksRaycasts = true;
+                }
+
+                StartFloating(i);
+            }
+
+            onOpened.Invoke();
+        });
     }
 
     /// <summary>
@@ -99,7 +157,57 @@ public sealed class FloatingUIFan : MonoBehaviour
     /// </summary>
     public void CloseAnimation()
     {
+        Close();
+    }
+
+    /// <summary>
+    /// 对外关闭接口：卡牌渐隐、收回中心并在结束后隐藏。
+    /// </summary>
+    [ContextMenu("Play Close Animation")]
+    public void Close()
+    {
+        EnsureCardsReady();
+
+        if (cards == null || cards.Length == 0)
+            return;
+
+        if (!IsOpen && transitionSequence == null)
+            return;
+
         KillAllTweens();
+        IsOpen = false;
+        onCloseStarted.Invoke();
+        transitionSequence = DOTween.Sequence().SetTarget(this);
+
+        for (int i = 0; i < cards.Length; i++)
+        {
+            RectTransform card = cards[i];
+            if (card == null || !card.gameObject.activeSelf)
+                continue;
+
+            CanvasGroup canvasGroup = cardCanvasGroups[i];
+            canvasGroup.interactable = false;
+            canvasGroup.blocksRaycasts = false;
+
+            float delay = (cards.Length - 1 - i) * closeStagger;
+            transitionSequence.Insert(delay, card.DOAnchorPos(expandOrigin, closeDuration).SetEase(closeEase));
+            transitionSequence.Insert(delay, card.DOLocalRotate(Vector3.zero, closeDuration).SetEase(closeEase));
+            transitionSequence.Insert(delay, card.DOScale(Vector3.one * collapsedScale, closeDuration).SetEase(closeEase));
+            transitionSequence.Insert(delay, canvasGroup.DOFade(0f, closeDuration * 0.8f).SetEase(Ease.InQuad));
+        }
+
+        transitionSequence.AppendCallback(() =>
+        {
+            transitionSequence = null;
+
+            foreach (RectTransform card in cards)
+            {
+                if (card != null)
+                    card.gameObject.SetActive(false);
+            }
+
+            onClosed.Invoke();
+        });
     }
 
     /// <summary>
@@ -107,10 +215,11 @@ public sealed class FloatingUIFan : MonoBehaviour
     /// </summary>
     private void EnsureCardsReady()
     {
-        if (cards != null && authoredLayouts != null)
+        if (cards != null && cardCanvasGroups != null && authoredLayouts != null)
             return;
 
         cards = CollectCards();
+        cardCanvasGroups = GetOrCreateCanvasGroups(cards);
         authoredLayouts = CaptureAuthoredLayouts(cards);
     }
 
@@ -154,7 +263,7 @@ public sealed class FloatingUIFan : MonoBehaviour
 
         for (int i = 0; i < root.childCount; i++)
         {
-            if (root.GetChild(i) is RectTransform rect)
+            if (root.GetChild(i) is RectTransform rect && rect.GetComponent<FloatingUIButtonVisual>() != null)
                 collectedCards.Add(rect);
         }
 
@@ -185,6 +294,24 @@ public sealed class FloatingUIFan : MonoBehaviour
         return layouts;
     }
 
+    private static CanvasGroup[] GetOrCreateCanvasGroups(IReadOnlyList<RectTransform> sourceCards)
+    {
+        CanvasGroup[] groups = new CanvasGroup[sourceCards.Count];
+
+        for (int i = 0; i < sourceCards.Count; i++)
+        {
+            RectTransform card = sourceCards[i];
+            if (card == null)
+                continue;
+
+            groups[i] = card.GetComponent<CanvasGroup>();
+            if (groups[i] == null)
+                groups[i] = card.gameObject.AddComponent<CanvasGroup>();
+        }
+
+        return groups;
+    }
+
     private void OnValidate()
     {
         ClampSettings();
@@ -195,6 +322,9 @@ public sealed class FloatingUIFan : MonoBehaviour
         collapsedScale = Mathf.Max(0.01f, collapsedScale);
         openDuration = Mathf.Max(0.01f, openDuration);
         stagger = Mathf.Max(0f, stagger);
+        fadeInDuration = Mathf.Max(0.01f, fadeInDuration);
+        closeDuration = Mathf.Max(0.01f, closeDuration);
+        closeStagger = Mathf.Max(0f, closeStagger);
         floatAmplitude = Mathf.Max(0f, floatAmplitude);
         floatSpeed = Mathf.Max(0.01f, floatSpeed);
         floatDelayStep = Mathf.Max(0f, floatDelayStep);
@@ -205,11 +335,17 @@ public sealed class FloatingUIFan : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
-        CloseAnimation();
+        KillAllTweens();
     }
 
     private void KillAllTweens()
     {
+        if (transitionSequence != null)
+        {
+            transitionSequence.Kill();
+            transitionSequence = null;
+        }
+
         if (cards == null)
             return;
 
@@ -217,6 +353,15 @@ public sealed class FloatingUIFan : MonoBehaviour
         {
             if (card != null)
                 card.DOKill();
+        }
+
+        if (cardCanvasGroups == null)
+            return;
+
+        foreach (CanvasGroup canvasGroup in cardCanvasGroups)
+        {
+            if (canvasGroup != null)
+                canvasGroup.DOKill();
         }
     }
 
