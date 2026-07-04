@@ -1,4 +1,6 @@
+using Anchor.GameFlow;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// 持有并转发单个交互点下 Floating UI 的基础行为。
@@ -6,12 +8,17 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class FloatingUIManager : MonoBehaviour
 {
+    private const int ManagedButtonCount = 3;
+
     [Header("Floating UI")]
     [SerializeField, Tooltip("扇形 Floating UI 动画控制器。为空时会从当前物体子级查找。")]
     private FloatingUIFan floatingUIFan;
 
     [SerializeField, Tooltip("行动点 UI 控制器。为空时会从当前物体子级查找。")]
     private FloatingUIActionPoints actionPoints;
+
+    // 缓存当前 Floating UI 直接子对象上的三个 Button，前两个接入音效房间行动点逻辑，第三个暂时只持有。
+    private readonly Button[] childButtons = new Button[ManagedButtonCount];
 
     public FloatingUIFan Fan => floatingUIFan;
     public FloatingUIActionPoints ActionPoints => actionPoints;
@@ -22,6 +29,7 @@ public sealed class FloatingUIManager : MonoBehaviour
     private void Reset()
     {
         CacheFloatingUIReferences();
+        CacheChildButtons();
     }
 
     /// <summary>
@@ -30,6 +38,23 @@ public sealed class FloatingUIManager : MonoBehaviour
     private void Awake()
     {
         CacheMissingFloatingUIReferences();
+        CacheChildButtons();
+    }
+
+    /// <summary>
+    /// 组件启用时注册前两个子按钮的音效行动点消耗事件。
+    /// </summary>
+    private void OnEnable()
+    {
+        RegisterChildButtonClicks();
+    }
+
+    /// <summary>
+    /// 组件禁用时移除子按钮事件，避免重复注册。
+    /// </summary>
+    private void OnDisable()
+    {
+        UnregisterChildButtonClicks();
     }
 
     /// <summary>
@@ -38,6 +63,7 @@ public sealed class FloatingUIManager : MonoBehaviour
     private void OnValidate()
     {
         CacheMissingFloatingUIReferences();
+        CacheChildButtons();
     }
 
     /// <summary>
@@ -48,6 +74,7 @@ public sealed class FloatingUIManager : MonoBehaviour
     {
         floatingUIFan = GetComponentInChildren<FloatingUIFan>(true);
         actionPoints = GetComponentInChildren<FloatingUIActionPoints>(true);
+        CacheChildButtons();
     }
 
     /// <summary>
@@ -120,5 +147,121 @@ public sealed class FloatingUIManager : MonoBehaviour
         }
 
         return actionPoints.TrySpend(amount);
+    }
+
+    /// <summary>
+    /// 缓存当前物体前三个直接子对象上的 Button。
+    /// </summary>
+    private void CacheChildButtons()
+    {
+        for (int i = 0; i < childButtons.Length; i++)
+        {
+            Transform child = transform.childCount > i ? transform.GetChild(i) : null;
+            childButtons[i] = child != null ? child.GetComponent<Button>() : null;
+        }
+    }
+
+    /// <summary>
+    /// 注册音效房间行动点按钮点击事件。
+    /// </summary>
+    private void RegisterChildButtonClicks()
+    {
+        CacheChildButtons();
+        RegisterButtonClick(0, TrySpendAudioOneActionPoint);
+        RegisterButtonClick(1, TrySpendAudioTwoActionPoints);
+    }
+
+    /// <summary>
+    /// 移除音效房间行动点按钮点击事件。
+    /// </summary>
+    private void UnregisterChildButtonClicks()
+    {
+        UnregisterButtonClick(0, TrySpendAudioOneActionPoint);
+        UnregisterButtonClick(1, TrySpendAudioTwoActionPoints);
+    }
+
+    /// <summary>
+    /// 给指定子按钮注册点击事件，注册前先移除同一事件防止重复绑定。
+    /// </summary>
+    private void RegisterButtonClick(int buttonIndex, UnityEngine.Events.UnityAction action)
+    {
+        if (!TryGetChildButton(buttonIndex, out Button button))
+        {
+            return;
+        }
+
+        button.onClick.RemoveListener(action);
+        button.onClick.AddListener(action);
+    }
+
+    /// <summary>
+    /// 从指定子按钮移除点击事件。
+    /// </summary>
+    private void UnregisterButtonClick(int buttonIndex, UnityEngine.Events.UnityAction action)
+    {
+        if (!TryGetChildButton(buttonIndex, out Button button))
+        {
+            return;
+        }
+
+        button.onClick.RemoveListener(action);
+    }
+
+    /// <summary>
+    /// 获取指定下标的子按钮。
+    /// </summary>
+    private bool TryGetChildButton(int buttonIndex, out Button button)
+    {
+        button = null;
+
+        if (buttonIndex < 0 || buttonIndex >= childButtons.Length)
+        {
+            return false;
+        }
+
+        button = childButtons[buttonIndex];
+        return button != null;
+    }
+
+    /// <summary>
+    /// 第一个子按钮：消耗 1 点音效房间行动点。
+    /// </summary>
+    private void TrySpendAudioOneActionPoint()
+    {
+        if (!TryGetGameFlowRunner(out GameFlowRunner runner))
+        {
+            return;
+        }
+
+        runner.TrySpendAudioOneActionPoint();
+    }
+
+    /// <summary>
+    /// 第二个子按钮：消耗 2 点音效房间行动点。
+    /// </summary>
+    private void TrySpendAudioTwoActionPoints()
+    {
+        if (!TryGetGameFlowRunner(out GameFlowRunner runner))
+        {
+            return;
+        }
+
+        runner.TrySpendAudioTwoActionPoints();
+    }
+
+    /// <summary>
+    /// 获取当前场景的游戏流程入口。
+    /// </summary>
+    private bool TryGetGameFlowRunner(out GameFlowRunner runner)
+    {
+        runner = GameFlowRunner.Instance;
+
+        if (runner != null)
+        {
+            return true;
+        }
+
+        Debug.LogWarning($"{nameof(FloatingUIManager)} 找不到 {nameof(GameFlowRunner)}，无法消耗音效房间行动点：{name}", this);
+        return false;
     }
 }
