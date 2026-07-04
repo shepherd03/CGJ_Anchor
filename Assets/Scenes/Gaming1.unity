@@ -4938,12 +4938,12 @@ GameObject:
   - component: {fileID: 964392480}
   - component: {fileID: 964392481}
   m_Layer: 0
-  m_Name: "\u7A0B\u5E8F\u623F\u95F4(1)_0001s_0000s_0000_\u56FE\u5C42-5_SelectedGlow"
+  m_Name: Glow
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &964392480
 Transform:
   m_ObjectHideFlags: 0
@@ -6205,12 +6205,12 @@ GameObject:
   - component: {fileID: 1215465391}
   - component: {fileID: 1215465392}
   m_Layer: 0
-  m_Name: "\u4EBA_SelectedGlow"
+  m_Name: Glow
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1215465391
 Transform:
   m_ObjectHideFlags: 0
@@ -10191,7 +10191,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1941745512
 Transform:
   m_ObjectHideFlags: 0

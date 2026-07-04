@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cinemachine;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
@@ -29,11 +30,124 @@ public class CinemachineScrollZoomController : MonoBehaviour
         [SerializeField, Tooltip("是否启用这一组按钮和镜头绑定。关闭后点击不会切换镜头。")]
         private bool enabled = true;
 
+        // Button 子物体里的 Glow 运行时缓存，用于鼠标悬停和点击锁定高亮。
+        private GameObject glowObject;
+
+        // 鼠标是否正悬停在 Button 上。
+        private bool isGlowHovered;
+
+        // Glow 是否已经被点击锁定。
+        private bool isGlowLocked;
+
         public string BindingName => bindingName;
         public Button Button => button;
         public CinemachineVirtualCamera VirtualCamera => virtualCamera;
         public Transform FollowTarget => followTarget;
         public bool Enabled => enabled;
+
+        /// <summary>
+        /// 查找 Button 下名为 Glow 的子物体，并按需初始化为关闭状态。
+        /// </summary>
+        public void ResolveGlowObject(bool deactivateOnResolve)
+        {
+            glowObject = null;
+
+            if (button == null)
+            {
+                return;
+            }
+
+            Transform glowTransform = FindChildRecursive(button.transform, "Glow");
+            if (glowTransform == null)
+            {
+                return;
+            }
+
+            glowObject = glowTransform.gameObject;
+
+            if (deactivateOnResolve)
+            {
+                ResetGlowState();
+            }
+        }
+
+        /// <summary>
+        /// 设置鼠标悬停状态，未锁定时离开按钮会关闭 Glow。
+        /// </summary>
+        public void SetGlowHovered(bool hovered)
+        {
+            isGlowHovered = hovered;
+            RefreshGlowObjectActive();
+        }
+
+        /// <summary>
+        /// 设置点击锁定状态；解锁时强制清掉悬停高亮，确保再次点击后立刻失活。
+        /// </summary>
+        public void SetGlowLocked(bool locked)
+        {
+            isGlowLocked = locked;
+
+            if (!locked)
+            {
+                isGlowHovered = false;
+            }
+
+            RefreshGlowObjectActive();
+        }
+
+        /// <summary>
+        /// 重置 Glow 状态，回到默认关闭。
+        /// </summary>
+        public void ResetGlowState()
+        {
+            isGlowHovered = false;
+            isGlowLocked = false;
+            RefreshGlowObjectActive();
+        }
+
+        /// <summary>
+        /// 根据悬停和锁定状态刷新 Glow 显隐。
+        /// </summary>
+        private void RefreshGlowObjectActive()
+        {
+            if (glowObject == null)
+            {
+                ResolveGlowObject(false);
+            }
+
+            if (glowObject != null)
+            {
+                glowObject.SetActive(isGlowHovered || isGlowLocked);
+            }
+        }
+
+        /// <summary>
+        /// 递归查找指定名称的子物体，兼容 Glow 不在 Button 第一层的情况。
+        /// </summary>
+        private static Transform FindChildRecursive(Transform parent, string childName)
+        {
+            if (parent == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform child = parent.GetChild(i);
+                if (child.name == childName)
+                {
+                    return child;
+                }
+
+                Transform nestedChild = FindChildRecursive(child, childName);
+                if (nestedChild != null)
+                {
+                    return nestedChild;
+                }
+            }
+
+            return null;
+        }
     }
 
     [Header("Cameras")]
@@ -81,7 +195,10 @@ public class CinemachineScrollZoomController : MonoBehaviour
 
     private readonly List<Button> registeredButtons = new List<Button>();
     private readonly List<UnityAction> registeredActions = new List<UnityAction>();
+    private readonly List<EventTrigger> registeredGlowEventTriggers = new List<EventTrigger>();
+    private readonly List<EventTrigger.Entry> registeredGlowEventEntries = new List<EventTrigger.Entry>();
     private CinemachineVirtualCamera currentVirtualCamera;
+    private CameraButtonBinding lockedGlowBinding;
 
     /// <summary>
     /// 添加组件时自动补齐主摄像机上的 CinemachineBrain。
@@ -161,12 +278,16 @@ public class CinemachineScrollZoomController : MonoBehaviour
             return;
         }
 
-        if (activeButtonReturnsToDefaultCamera && binding.VirtualCamera == currentVirtualCamera)
+        bool isCurrentCameraButton = binding.VirtualCamera == currentVirtualCamera;
+        bool isLockedGlowButton = lockedGlowBinding == binding;
+        if (activeButtonReturnsToDefaultCamera && isCurrentCameraButton && isLockedGlowButton)
         {
+            UnlockGlowBinding(binding);
             SwitchToDefaultCamera();
             return;
         }
 
+        LockGlowBinding(binding);
         ApplyBindingFollowTarget(binding);
         SwitchToCamera(binding.VirtualCamera);
     }
@@ -233,6 +354,8 @@ public class CinemachineScrollZoomController : MonoBehaviour
             }
 
             int bindingIndex = i;
+            binding.ResolveGlowObject(true);
+            RegisterGlowHoverTriggers(binding);
             UnityAction action = () => SwitchToCameraByIndex(bindingIndex);
             binding.Button.onClick.AddListener(action);
 
@@ -256,6 +379,100 @@ public class CinemachineScrollZoomController : MonoBehaviour
 
         registeredButtons.Clear();
         registeredActions.Clear();
+
+        for (int i = 0; i < registeredGlowEventTriggers.Count; i++)
+        {
+            EventTrigger eventTrigger = registeredGlowEventTriggers[i];
+            EventTrigger.Entry eventEntry = registeredGlowEventEntries[i];
+            if (eventTrigger != null && eventEntry != null)
+            {
+                eventTrigger.triggers.Remove(eventEntry);
+            }
+        }
+
+        registeredGlowEventTriggers.Clear();
+        registeredGlowEventEntries.Clear();
+        ResetAllGlowStates();
+        lockedGlowBinding = null;
+    }
+
+    /// <summary>
+    /// 给 Button 注册鼠标悬停 Glow 事件。
+    /// </summary>
+    private void RegisterGlowHoverTriggers(CameraButtonBinding binding)
+    {
+        if (binding == null || binding.Button == null)
+        {
+            return;
+        }
+
+        EventTrigger eventTrigger = binding.Button.GetComponent<EventTrigger>();
+        if (eventTrigger == null)
+        {
+            eventTrigger = binding.Button.gameObject.AddComponent<EventTrigger>();
+        }
+
+        AddGlowEventTriggerEntry(eventTrigger, EventTriggerType.PointerEnter, _ => binding.SetGlowHovered(true));
+        AddGlowEventTriggerEntry(eventTrigger, EventTriggerType.PointerExit, _ => binding.SetGlowHovered(false));
+    }
+
+    /// <summary>
+    /// 给 EventTrigger 添加一条 Glow 事件，并记录下来便于禁用时注销。
+    /// </summary>
+    private void AddGlowEventTriggerEntry(EventTrigger eventTrigger, EventTriggerType eventType, UnityAction<BaseEventData> action)
+    {
+        EventTrigger.Entry eventEntry = new EventTrigger.Entry
+        {
+            eventID = eventType
+        };
+        eventEntry.callback.AddListener(action);
+        eventTrigger.triggers.Add(eventEntry);
+
+        registeredGlowEventTriggers.Add(eventTrigger);
+        registeredGlowEventEntries.Add(eventEntry);
+    }
+
+    /// <summary>
+    /// 锁定指定按钮 Glow，并取消其他按钮的锁定。
+    /// </summary>
+    private void LockGlowBinding(CameraButtonBinding binding)
+    {
+        if (binding == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < cameraButtonBindings.Length; i++)
+        {
+            cameraButtonBindings[i]?.SetGlowLocked(cameraButtonBindings[i] == binding);
+        }
+
+        lockedGlowBinding = binding;
+    }
+
+    /// <summary>
+    /// 取消指定按钮 Glow 锁定，并强制关闭 Glow。
+    /// </summary>
+    private void UnlockGlowBinding(CameraButtonBinding binding)
+    {
+        if (binding == null || lockedGlowBinding != binding)
+        {
+            return;
+        }
+
+        binding.SetGlowLocked(false);
+        lockedGlowBinding = null;
+    }
+
+    /// <summary>
+    /// 重置所有绑定里的 Glow，避免组件禁用后残留悬停或锁定高亮。
+    /// </summary>
+    private void ResetAllGlowStates()
+    {
+        for (int i = 0; i < cameraButtonBindings.Length; i++)
+        {
+            cameraButtonBindings[i]?.ResetGlowState();
+        }
     }
 
     /// <summary>
