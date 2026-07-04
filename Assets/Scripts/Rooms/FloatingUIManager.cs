@@ -11,7 +11,31 @@ public sealed class FloatingUIManager : MonoBehaviour
 {
     private const int ManagedButtonCount = 3;
 
+    /// <summary>
+    /// Floating UI 前两个选项要消耗的外部行动点类型。
+    /// </summary>
+    private enum RoomActionPointType
+    {
+        /// <summary>
+        /// 代码房间，对应 GameFlow 的 Program 投点。
+        /// </summary>
+        Code,
+
+        /// <summary>
+        /// 美术房间，对应 GameFlow 的 Art 投点。
+        /// </summary>
+        Art,
+
+        /// <summary>
+        /// 音频房间，对应 GameFlow 的 Audio 投点。
+        /// </summary>
+        Audio
+    }
+
     [Header("Floating UI")]
+    [SerializeField, Tooltip("当前 Floating UI 前两个选项消耗的行动点类型。Code 会映射到 GameFlow 的 Program。")]
+    private RoomActionPointType type = RoomActionPointType.Audio;
+
     [SerializeField, Tooltip("扇形 Floating UI 动画控制器。为空时会从当前物体子级查找。")]
     private FloatingUIFan floatingUIFan;
 
@@ -54,6 +78,7 @@ public sealed class FloatingUIManager : MonoBehaviour
 
     /// <summary>
     /// 组件启用时注册前两个子按钮的音效行动点消耗事件。
+    /// 过期：现在注册的是当前 Type 配置的行动点消耗事件。
     /// </summary>
     private void OnEnable()
     {
@@ -162,16 +187,18 @@ public sealed class FloatingUIManager : MonoBehaviour
 
     /// <summary>
     /// 尝试消耗外部 GameFlow 的音效行动点，失败时显示 Floating UI 提示。
+    /// 过期：现在按当前 Type 配置消耗外部 GameFlow 行动点。
     /// </summary>
     public bool TrySpendActionPoints(int amount)
     {
-        return TrySpendAudioActionPoints(amount);
+        return TrySpendTypedActionPoints(amount);
     }
 
     /// <summary>
     /// 尝试消耗外部 GameFlow 的音效行动点。
+    /// 过期：现在尝试消耗当前 Type 配置的外部 GameFlow 行动点。
     /// </summary>
-    private bool TrySpendAudioActionPoints(int amount)
+    private bool TrySpendTypedActionPoints(int amount)
     {
         amount = Mathf.Max(0, amount);
         if (amount == 0)
@@ -185,7 +212,7 @@ public sealed class FloatingUIManager : MonoBehaviour
             return false;
         }
 
-        bool success = TrySpendAudioActionPoints(runner, amount);
+        bool success = TrySpendTypedActionPoints(runner, amount, type);
         if (!success)
         {
             ShowInsufficientActionPointsFeedback();
@@ -196,6 +223,47 @@ public sealed class FloatingUIManager : MonoBehaviour
 
     /// <summary>
     /// 按点数调用 GameFlowRunner 上对应的音效行动点消耗方法。
+    /// 过期：现在按 Type 和点数调用 GameFlowRunner 上对应的行动点消耗方法。
+    /// </summary>
+    private static bool TrySpendTypedActionPoints(GameFlowRunner runner, int amount, RoomActionPointType actionPointType)
+    {
+        return actionPointType switch
+        {
+            RoomActionPointType.Code => TrySpendCodeActionPoints(runner, amount),
+            RoomActionPointType.Art => TrySpendArtActionPoints(runner, amount),
+            RoomActionPointType.Audio => TrySpendAudioActionPoints(runner, amount),
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// 按点数调用 GameFlowRunner 上对应的代码行动点消耗方法。
+    /// </summary>
+    private static bool TrySpendCodeActionPoints(GameFlowRunner runner, int amount)
+    {
+        return amount switch
+        {
+            1 => runner.TrySpendProgramOneActionPoint(),
+            2 => runner.TrySpendProgramTwoActionPoints(),
+            _ => runner.TryAllocateProgram(amount)
+        };
+    }
+
+    /// <summary>
+    /// 按点数调用 GameFlowRunner 上对应的美术行动点消耗方法。
+    /// </summary>
+    private static bool TrySpendArtActionPoints(GameFlowRunner runner, int amount)
+    {
+        return amount switch
+        {
+            1 => runner.TrySpendArtOneActionPoint(),
+            2 => runner.TrySpendArtTwoActionPoints(),
+            _ => runner.TryAllocateArt(amount)
+        };
+    }
+
+    /// <summary>
+    /// 按点数调用 GameFlowRunner 上对应的音频行动点消耗方法。
     /// </summary>
     private static bool TrySpendAudioActionPoints(GameFlowRunner runner, int amount)
     {
@@ -221,6 +289,7 @@ public sealed class FloatingUIManager : MonoBehaviour
 
     /// <summary>
     /// 注册音效房间行动点按钮点击事件。
+    /// 过期：现在注册当前 Type 配置的房间行动点按钮点击事件。
     /// </summary>
     private void RegisterChildButtonClicks()
     {
@@ -302,20 +371,22 @@ public sealed class FloatingUIManager : MonoBehaviour
 
     /// <summary>
     /// 第一个子按钮：尝试消耗 1 点音效行动点，然后关闭 Floating UI。
+    /// 过期：现在尝试消耗当前 Type 配置的 1 点行动点，然后关闭 Floating UI。
     /// </summary>
     private void OnFirstChildButtonClicked()
     {
-        bool actionApplied = TrySpendAudioActionPoints(1);
+        bool actionApplied = TrySpendTypedActionPoints(1);
         CloseFloatingUIFromSpawner();
         LockSpawnerForCurrentWeekIfActionApplied(actionApplied);
     }
 
     /// <summary>
     /// 第二个子按钮：尝试消耗 2 点音效行动点，然后关闭 Floating UI。
+    /// 过期：现在尝试消耗当前 Type 配置的 2 点行动点，然后关闭 Floating UI。
     /// </summary>
     private void OnSecondChildButtonClicked()
     {
-        bool actionApplied = TrySpendAudioActionPoints(2);
+        bool actionApplied = TrySpendTypedActionPoints(2);
         CloseFloatingUIFromSpawner();
         LockSpawnerForCurrentWeekIfActionApplied(actionApplied);
     }
@@ -387,7 +458,7 @@ public sealed class FloatingUIManager : MonoBehaviour
             return true;
         }
 
-        Debug.LogWarning($"{nameof(FloatingUIManager)} 找不到 {nameof(GameFlowRunner)}，无法消耗音效房间行动点：{name}", this);
+        Debug.LogWarning($"{nameof(FloatingUIManager)} 找不到 {nameof(GameFlowRunner)}，无法消耗 {type} 房间行动点：{name}", this);
         return false;
     }
 
