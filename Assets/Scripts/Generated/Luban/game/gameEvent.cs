@@ -20,18 +20,9 @@ public sealed partial class gameEvent : Luban.BeanBase
         Title = _buf.ReadString();
         Content = _buf.ReadString();
         Type = _buf.ReadInt();
-        Y1 = _buf.ReadFloat();
-        Y2 = _buf.ReadFloat();
-        Y3 = _buf.ReadFloat();
-        Y4 = _buf.ReadFloat();
-        N1 = _buf.ReadFloat();
-        N2 = _buf.ReadFloat();
-        N3 = _buf.ReadFloat();
-        N4 = _buf.ReadFloat();
-        T1 = _buf.ReadFloat();
-        T2 = _buf.ReadFloat();
-        T3 = _buf.ReadFloat();
-        T4 = _buf.ReadFloat();
+        {int __n0 = _buf.ReadSize(); YesEffects = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} YesEffects[__index0] = __e0;}}
+        {int __n0 = _buf.ReadSize(); NoEffects = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} NoEffects[__index0] = __e0;}}
+        {int __n0 = _buf.ReadSize(); TriggerConditions = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} TriggerConditions[__index0] = __e0;}}
         Ratio = _buf.ReadFloat();
         Cost = _buf.ReadInt();
     }
@@ -54,59 +45,23 @@ public sealed partial class gameEvent : Luban.BeanBase
     /// </summary>
     public readonly string Content;
     /// <summary>
-    /// TYPE
+    /// 事件类型：0=选择Y，1=选择N，2=触发式
     /// </summary>
     public readonly int Type;
     /// <summary>
-    /// Y1（事件中选择Y以后属性1的变化值）
+    /// 选择Y后的属性修改，格式[[属性ID,值]]
     /// </summary>
-    public readonly float Y1;
+    public readonly int[][] YesEffects;
     /// <summary>
-    /// Y2
+    /// 选择N后的属性修改，格式[[属性ID,值]]
     /// </summary>
-    public readonly float Y2;
+    public readonly int[][] NoEffects;
     /// <summary>
-    /// Y3
+    /// 触发条件，格式[[属性ID,阈值]]；阈值正负语义由运行时解释
     /// </summary>
-    public readonly float Y3;
+    public readonly int[][] TriggerConditions;
     /// <summary>
-    /// Y4
-    /// </summary>
-    public readonly float Y4;
-    /// <summary>
-    /// N1（事件中选择N以后属性1的变化值）
-    /// </summary>
-    public readonly float N1;
-    /// <summary>
-    /// N2
-    /// </summary>
-    public readonly float N2;
-    /// <summary>
-    /// N3
-    /// </summary>
-    public readonly float N3;
-    /// <summary>
-    /// N4
-    /// </summary>
-    public readonly float N4;
-    /// <summary>
-    /// T1（触发条件，为0代表不考虑，大于0代表属性1大于该值时触发，小于零代表属性1小于该值时触发）
-    /// </summary>
-    public readonly float T1;
-    /// <summary>
-    /// T2
-    /// </summary>
-    public readonly float T2;
-    /// <summary>
-    /// T3
-    /// </summary>
-    public readonly float T3;
-    /// <summary>
-    /// T4
-    /// </summary>
-    public readonly float T4;
-    /// <summary>
-    /// Ratio（随机事件的触发概率
+    /// Ratio（随机事件的触发概率）
     /// </summary>
     public readonly float Ratio;
     /// <summary>
@@ -128,18 +83,9 @@ public sealed partial class gameEvent : Luban.BeanBase
         + "title:" + Title + ","
         + "content:" + Content + ","
         + "type:" + Type + ","
-        + "y1:" + Y1 + ","
-        + "y2:" + Y2 + ","
-        + "y3:" + Y3 + ","
-        + "y4:" + Y4 + ","
-        + "n1:" + N1 + ","
-        + "n2:" + N2 + ","
-        + "n3:" + N3 + ","
-        + "n4:" + N4 + ","
-        + "t1:" + T1 + ","
-        + "t2:" + T2 + ","
-        + "t3:" + T3 + ","
-        + "t4:" + T4 + ","
+        + "yesEffects:" + Luban.StringUtil.CollectionToString(YesEffects) + ","
+        + "noEffects:" + Luban.StringUtil.CollectionToString(NoEffects) + ","
+        + "triggerConditions:" + Luban.StringUtil.CollectionToString(TriggerConditions) + ","
         + "ratio:" + Ratio + ","
         + "cost:" + Cost + ","
         + "}";

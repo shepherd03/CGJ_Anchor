@@ -4,6 +4,7 @@ using Luban;
 
 using BuffRow = Anchor.Config.game.buff;
 using EventRow = Anchor.Config.game.gameEvent;
+using PlayerAttributeRow = Anchor.Config.game.playerAttribute;
 
 var root = FindProjectRoot(AppContext.BaseDirectory);
 var dataDir = Path.Combine(root, "Assets", "Resources", "Config", "Luban", "Bin");
@@ -14,8 +15,9 @@ output.AppendLine("[TableConfigValidator] Begin");
 output.AppendLine($"DataDir: {dataDir}");
 
 var tables = new Tables(LoadTableBytes);
-ValidateEvents(tables.TbgameEvent.DataList, errors, output);
-ValidateBuffs(tables.Tbbuff.DataList, errors, output);
+var playerAttributeIds = ValidatePlayerAttributes(tables.TbplayerAttribute.DataList, errors, output);
+ValidateEvents(tables.TbgameEvent.DataList, playerAttributeIds, errors, output);
+ValidateBuffs(tables.Tbbuff.DataList, playerAttributeIds, errors, output);
 
 if (errors.Count > 0)
 {
@@ -45,6 +47,7 @@ ByteBuf LoadTableBytes(string fileName)
 
 static void ValidateEvents(
     IReadOnlyList<EventRow> rows,
+    ISet<int> playerAttributeIds,
     ICollection<string> errors,
     StringBuilder output)
 {
@@ -60,26 +63,40 @@ static void ValidateEvents(
         CheckRequired("Event", row.Id, "content", row.Content, errors);
         CheckCost("Event", row.Id, row.Cost, errors);
         CheckRange("Event", row.Id, "ratio", row.Ratio, 0f, 1f, errors);
-        CheckFinite("Event", row.Id, "y1", row.Y1, errors);
-        CheckFinite("Event", row.Id, "y2", row.Y2, errors);
-        CheckFinite("Event", row.Id, "y3", row.Y3, errors);
-        CheckFinite("Event", row.Id, "y4", row.Y4, errors);
-        CheckFinite("Event", row.Id, "n1", row.N1, errors);
-        CheckFinite("Event", row.Id, "n2", row.N2, errors);
-        CheckFinite("Event", row.Id, "n3", row.N3, errors);
-        CheckFinite("Event", row.Id, "n4", row.N4, errors);
-        CheckFinite("Event", row.Id, "t1", row.T1, errors);
-        CheckFinite("Event", row.Id, "t2", row.T2, errors);
-        CheckFinite("Event", row.Id, "t3", row.T3, errors);
-        CheckFinite("Event", row.Id, "t4", row.T4, errors);
+        CheckAttributePairs("Event", row.Id, "yesEffects", row.YesEffects, playerAttributeIds, errors);
+        CheckAttributePairs("Event", row.Id, "noEffects", row.NoEffects, playerAttributeIds, errors);
+        CheckAttributePairs("Event", row.Id, "triggerConditions", row.TriggerConditions, playerAttributeIds, errors);
 
         output.AppendLine(
-            $"  Event[{row.Id}] title={row.Title}, type={row.Type}, ratio={row.Ratio}, cost={row.Cost}, y=({row.Y1},{row.Y2},{row.Y3},{row.Y4}), n=({row.N1},{row.N2},{row.N3},{row.N4}), t=({row.T1},{row.T2},{row.T3},{row.T4})");
+            $"  Event[{row.Id}] title={row.Title}, type={row.Type}, ratio={row.Ratio}, cost={row.Cost}, yes={FormatPairs(row.YesEffects)}, no={FormatPairs(row.NoEffects)}, triggers={FormatPairs(row.TriggerConditions)}");
     }
+}
+
+static HashSet<int> ValidatePlayerAttributes(
+    IReadOnlyList<PlayerAttributeRow> rows,
+    ICollection<string> errors,
+    StringBuilder output)
+{
+    output.AppendLine($"PlayerAttributes: {rows.Count}");
+    if (rows.Count == 0)
+        errors.Add("game.TbplayerAttribute has no data rows.");
+
+    var ids = new HashSet<int>();
+    foreach (var row in rows)
+    {
+        CheckId("PlayerAttribute", row.Id, ids, errors);
+        CheckRequired("PlayerAttribute", row.Id, "displayName", row.DisplayName, errors);
+
+        output.AppendLine(
+            $"  PlayerAttribute[{row.Id}] displayName={row.DisplayName}, defaultValue={row.DefaultValue}");
+    }
+
+    return ids;
 }
 
 static void ValidateBuffs(
     IReadOnlyList<BuffRow> rows,
+    ISet<int> playerAttributeIds,
     ICollection<string> errors,
     StringBuilder output)
 {
@@ -94,18 +111,11 @@ static void ValidateBuffs(
         CheckRequired("Buff", row.Id, "title", row.Title, errors);
         CheckRequired("Buff", row.Id, "content", row.Content, errors);
         CheckCost("Buff", row.Id, row.Cost, errors);
-        CheckFinite("Buff", row.Id, "c1", row.C1, errors);
-        CheckFinite("Buff", row.Id, "c2", row.C2, errors);
-        CheckFinite("Buff", row.Id, "c3", row.C3, errors);
-        CheckFinite("Buff", row.Id, "c11", row.C11, errors);
-        CheckFinite("Buff", row.Id, "t11", row.T11, errors);
-        CheckFinite("Buff", row.Id, "c22", row.C22, errors);
-        CheckFinite("Buff", row.Id, "t22", row.T22, errors);
-        CheckFinite("Buff", row.Id, "c33", row.C33, errors);
-        CheckFinite("Buff", row.Id, "t33", row.T33, errors);
+        CheckAttributePairs("Buff", row.Id, "effects", row.Effects, playerAttributeIds, errors);
+        CheckAttributePairs("Buff", row.Id, "triggerConditions", row.TriggerConditions, playerAttributeIds, errors);
 
         output.AppendLine(
-            $"  Buff[{row.Id}] title={row.Title}, type={row.Type}, cost={row.Cost}, c=({row.C1},{row.C2},{row.C3},{row.C11},{row.C22},{row.C33}), t=({row.T11},{row.T22},{row.T33})");
+            $"  Buff[{row.Id}] title={row.Title}, type={row.Type}, cost={row.Cost}, effects={FormatPairs(row.Effects)}, triggers={FormatPairs(row.TriggerConditions)}");
     }
 }
 
@@ -133,6 +143,52 @@ static void CheckCost(string table, int id, int cost, ICollection<string> errors
 {
     if (cost < 0)
         errors.Add($"{table}[{id}] cost is negative: {cost}.");
+}
+
+static void CheckAttributePairs(
+    string table,
+    int id,
+    string field,
+    int[][] pairs,
+    ISet<int> playerAttributeIds,
+    ICollection<string> errors)
+{
+    if (pairs == null)
+    {
+        errors.Add($"{table}[{id}] field '{field}' is null.");
+        return;
+    }
+
+    for (var i = 0; i < pairs.Length; i++)
+    {
+        var pair = pairs[i];
+        if (pair == null || pair.Length != 2)
+        {
+            errors.Add($"{table}[{id}] field '{field}' item {i} must be [attributeId, value].");
+            continue;
+        }
+
+        if (!playerAttributeIds.Contains(pair[0]))
+        {
+            errors.Add($"{table}[{id}] field '{field}' item {i} uses unknown player attribute id: {pair[0]}.");
+        }
+    }
+}
+
+static string FormatPairs(int[][] pairs)
+{
+    if (pairs == null || pairs.Length == 0)
+    {
+        return "[]";
+    }
+
+    var parts = new string[pairs.Length];
+    for (var i = 0; i < pairs.Length; i++)
+    {
+        parts[i] = pairs[i] == null ? "null" : "[" + string.Join(",", pairs[i]) + "]";
+    }
+
+    return "[" + string.Join(",", parts) + "]";
 }
 
 static void CheckRange(

@@ -20,15 +20,8 @@ public sealed partial class buff : Luban.BeanBase
         Title = _buf.ReadString();
         Content = _buf.ReadString();
         Type = _buf.ReadInt();
-        C1 = _buf.ReadFloat();
-        C2 = _buf.ReadFloat();
-        C3 = _buf.ReadFloat();
-        C11 = _buf.ReadFloat();
-        T11 = _buf.ReadFloat();
-        C22 = _buf.ReadFloat();
-        T22 = _buf.ReadFloat();
-        C33 = _buf.ReadFloat();
-        T33 = _buf.ReadFloat();
+        {int __n0 = _buf.ReadSize(); Effects = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} Effects[__index0] = __e0;}}
+        {int __n0 = _buf.ReadSize(); TriggerConditions = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} TriggerConditions[__index0] = __e0;}}
         Cost = _buf.ReadInt();
     }
 
@@ -54,41 +47,13 @@ public sealed partial class buff : Luban.BeanBase
     /// </summary>
     public readonly int Type;
     /// <summary>
-    /// C1（下个月程序每分配1点，愿望单+500
+    /// BUFF生效时的属性修改，格式[[属性ID,值]]
     /// </summary>
-    public readonly float C1;
+    public readonly int[][] Effects;
     /// <summary>
-    /// C2
+    /// BUFF触发条件，格式[[属性ID,阈值]]；阈值语义由运行时解释
     /// </summary>
-    public readonly float C2;
-    /// <summary>
-    /// C3
-    /// </summary>
-    public readonly float C3;
-    /// <summary>
-    /// C11（程序每分配1点，愿望单*1.05倍率）
-    /// </summary>
-    public readonly float C11;
-    /// <summary>
-    /// T11（触发阈值，当结算时累计如果在程序分配5点，倍率*3
-    /// </summary>
-    public readonly float T11;
-    /// <summary>
-    /// C22
-    /// </summary>
-    public readonly float C22;
-    /// <summary>
-    /// T22
-    /// </summary>
-    public readonly float T22;
-    /// <summary>
-    /// C33
-    /// </summary>
-    public readonly float C33;
-    /// <summary>
-    /// T33
-    /// </summary>
-    public readonly float T33;
+    public readonly int[][] TriggerConditions;
     /// <summary>
     /// Cost
     /// </summary>
@@ -108,15 +73,8 @@ public sealed partial class buff : Luban.BeanBase
         + "title:" + Title + ","
         + "content:" + Content + ","
         + "type:" + Type + ","
-        + "c1:" + C1 + ","
-        + "c2:" + C2 + ","
-        + "c3:" + C3 + ","
-        + "c11:" + C11 + ","
-        + "t11:" + T11 + ","
-        + "c22:" + C22 + ","
-        + "t22:" + T22 + ","
-        + "c33:" + C33 + ","
-        + "t33:" + T33 + ","
+        + "effects:" + Luban.StringUtil.CollectionToString(Effects) + ","
+        + "triggerConditions:" + Luban.StringUtil.CollectionToString(TriggerConditions) + ","
         + "cost:" + Cost + ","
         + "}";
     }
