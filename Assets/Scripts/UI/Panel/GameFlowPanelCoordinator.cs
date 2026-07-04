@@ -25,6 +25,9 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("周结算页面。为空时会从场景中查找。")]
         private WeekPanelManager weekPanelManager;
 
+        [SerializeField, Tooltip("游戏结束页面。为空时会从场景中查找。")]
+        private GameEndPanelManager gameEndPanelManager;
+
         [Header("Bullet Screen")]
         [SerializeField, Tooltip("月结算弹幕屏幕控制器。为空时会从场景中查找。")]
         private BulletScreenController bulletScreenController;
@@ -47,7 +50,7 @@ namespace Anchor.UI.Panel
                 return Instance;
             }
 
-            GameFlowPanelCoordinator coordinator = FindObjectOfType<GameFlowPanelCoordinator>();
+            GameFlowPanelCoordinator coordinator = FindObjectOfType<GameFlowPanelCoordinator>(true);
             if (coordinator != null)
             {
                 return coordinator;
@@ -94,6 +97,7 @@ namespace Anchor.UI.Panel
             StopFlowRoutine();
             CloseMainPanel();
             CloseWeekPanel();
+            CloseGameEndPanel();
             runner.StartNewGame();
             CloseBeginPanel();
             RouteCurrentState(runner);
@@ -137,7 +141,7 @@ namespace Anchor.UI.Panel
                     StartFlowRoutine(RouteFlowAfterCurrentState(runner));
                     break;
                 case GameFlowState.Ending:
-                    Debug.Log("[游戏流程] 已进入结局状态，NextStep 不再推进。", this);
+                    OpenGameEndPanel();
                     break;
                 default:
                     RouteCurrentState(runner);
@@ -182,6 +186,9 @@ namespace Anchor.UI.Panel
                 case GameFlowState.MonthSettlement:
                     StartFlowRoutine(RouteFlowAfterCurrentState(runner));
                     break;
+                case GameFlowState.Ending:
+                    OpenGameEndPanel();
+                    break;
             }
         }
 
@@ -209,6 +216,7 @@ namespace Anchor.UI.Panel
                         OpenBuffWindow();
                         yield break;
                     case GameFlowState.Ending:
+                        OpenGameEndPanel();
                         yield break;
                     default:
                         yield break;
@@ -410,6 +418,35 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
+        /// 打开游戏结束页面。
+        /// </summary>
+        private void OpenGameEndPanel()
+        {
+            EnsureGameEndPanelManager();
+
+            if (gameEndPanelManager == null)
+            {
+                Debug.LogWarning($"{nameof(GameFlowPanelCoordinator)} cannot find {nameof(GameEndPanelManager)} in the scene.", this);
+                return;
+            }
+
+            gameEndPanelManager.Open();
+        }
+
+        /// <summary>
+        /// 关闭游戏结束页面。
+        /// </summary>
+        private void CloseGameEndPanel()
+        {
+            EnsureGameEndPanelManager();
+
+            if (gameEndPanelManager != null)
+            {
+                gameEndPanelManager.Close();
+            }
+        }
+
+        /// <summary>
         /// 获取当前场景的 GameFlowRunner 单例。
         /// </summary>
         private bool TryGetRunner(out GameFlowRunner runner)
@@ -466,6 +503,17 @@ namespace Anchor.UI.Panel
             if (weekPanelManager == null)
             {
                 weekPanelManager = FindObjectOfType<WeekPanelManager>(true);
+            }
+        }
+
+        /// <summary>
+        /// 查找并缓存游戏结束页面。
+        /// </summary>
+        private void EnsureGameEndPanelManager()
+        {
+            if (gameEndPanelManager == null)
+            {
+                gameEndPanelManager = FindObjectOfType<GameEndPanelManager>(true);
             }
         }
 
