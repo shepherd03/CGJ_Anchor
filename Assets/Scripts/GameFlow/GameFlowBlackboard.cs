@@ -14,6 +14,7 @@ namespace Anchor.GameFlow
         private readonly Random mRandom = new();
         private readonly HashSet<GameDevelopmentTrack> mPreviousWeekSpentTracks = new();
         private float mCurrentWeekWishlistMultiplier = 1f;
+        private int mWeekStartWishlistCount;
 
         public int MonthIndex { get; private set; }
         public int WeekIndex { get; private set; }
@@ -29,6 +30,9 @@ namespace Anchor.GameFlow
         public int WeeklyWishlistGrowth => GetInt(CharacterAttributeIds.WeeklyWishlistGrowth);
         public int Coins => GetInt(CharacterAttributeIds.Coins);
         public int WishlistCount => GetInt(CharacterAttributeIds.Wishlist);
+        public int WeekStartWishlistCount => mWeekStartWishlistCount;
+        public int CurrentWeekWishlistDelta => WishlistCount - mWeekStartWishlistCount;
+        public int LastWeekWishlistDelta { get; private set; }
         public int BaseProgramRoomOperationCount => GetInt(CharacterAttributeIds.BaseProgramRoomOperationCount);
         public int ProgramRoomOperationCount => GetInt(CharacterAttributeIds.ProgramRoomOperationCount);
         public int BaseArtRoomOperationCount => GetInt(CharacterAttributeIds.BaseArtRoomOperationCount);
@@ -101,6 +105,8 @@ namespace Anchor.GameFlow
             mTriggeredEventIds.Clear();
             mPreviousWeekSpentTracks.Clear();
             mCurrentWeekWishlistMultiplier = 1f;
+            mWeekStartWishlistCount = WishlistCount;
+            LastWeekWishlistDelta = 0;
         }
 
         public void BeginMonth(MonthDefinition definition)
@@ -115,6 +121,7 @@ namespace Anchor.GameFlow
         {
             WeekIndex++;
             TotalWeekIndex++;
+            mWeekStartWishlistCount = WishlistCount;
             PlayerAttributes.Set(CharacterAttributeIds.WeeklyActionPower, Math.Max(0, BaseWeeklyActionPower));
             ResetWeeklyRoomOperationCounts();
             RollWeekStartWishlistMultiplier();
@@ -185,6 +192,7 @@ namespace Anchor.GameFlow
             PlayerAttributes.Set(CharacterAttributeIds.Bug, Math.Max(0, BugScore + result.BugDelta));
             PlayerAttributes.Add(CharacterAttributeIds.Coins, result.CoinDelta);
             PlayerAttributes.Set(CharacterAttributeIds.Wishlist, Math.Max(0, WishlistCount + result.WishlistDelta));
+            LastWeekWishlistDelta = WishlistCount - mWeekStartWishlistCount;
 
             if (result.EventId > 0)
             {
