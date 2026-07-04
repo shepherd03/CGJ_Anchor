@@ -189,10 +189,10 @@ TextureImporter:
       name: "\u5854\u7F57\u6C34\u6676\u7403"
       rect:
         serializedVersion: 2
-        x: 474
-        y: 248
-        width: 249
-        height: 238
+        x: 473
+        y: 201
+        width: 329
+        height: 285
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -202,27 +202,6 @@ TextureImporter:
       bones: []
       spriteID: 4ccdb31ad190d44878835eb28e8d97d8
       internalID: 1891281986
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: shopping1_4
-      rect:
-        serializedVersion: 2
-        x: 675
-        y: 203
-        width: 122
-        height: 90
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: b4afa9435b6be401aba8703becf32373
-      internalID: 850341542
       vertices: []
       indices: 
       edges: []

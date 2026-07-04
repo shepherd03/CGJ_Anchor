@@ -2056,7 +2056,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2103510970920006553, guid: d074b30a18a174c2a8596db85bb6c202, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5984951678709732320, guid: d074b30a18a174c2a8596db85bb6c202, type: 3}
       propertyPath: m_Pivot.x
@@ -2382,6 +2382,17 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1165708988 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5297999656583761181, guid: 8d748543a8a4a4ce197e2e863e4cf929, type: 3}
+  m_PrefabInstance: {fileID: 4660911803641929745}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4a98c25e0483437782810a328262894, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1247064733
 GameObject:
   m_ObjectHideFlags: 0
@@ -3314,6 +3325,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   floatingUIFan: {fileID: 1711686140}
   actionPoints: {fileID: 1711686138}
+  buttonPrefabSpawner: {fileID: 1165708988}
 --- !u!1 &1716886761
 GameObject:
   m_ObjectHideFlags: 0
