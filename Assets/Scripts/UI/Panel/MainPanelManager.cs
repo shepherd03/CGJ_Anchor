@@ -1,6 +1,7 @@
 using System;
 using Anchor.Character.Attributes;
 using Anchor.GameFlow;
+using Anchor.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -24,8 +25,8 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("显示 Audio 数值的 TextMeshProUGUI。")]
         private TextMeshProUGUI audioText;
 
-        [SerializeField, Tooltip("显示当前周剩余行动点的 TextMeshProUGUI。为空时不显示。")]
-        private TextMeshProUGUI actionPointText;
+        [SerializeField, Tooltip("根据当前周剩余行动点动态生成行动点 UI 的容器控制器。为空时不显示。")]
+        private APContainerController actionPointContainer;
 
         [SerializeField, Tooltip("显示 Wishlist 数值的 TextMeshProUGUI。为空时不显示。")]
         private TextMeshProUGUI wishlistText;
@@ -125,7 +126,7 @@ namespace Anchor.UI.Panel
             SetText(bugText, $"Bug: {blackboard.BugScore}");
             SetText(viewText, $"View: {blackboard.VisualScore}");
             SetText(audioText, $"Audio: {blackboard.AtmosphereScore}");
-            SetText(actionPointText, $"AP: {blackboard.RemainingActionPoints}");
+            SetActionPointContainer(blackboard.RemainingActionPoints);
             SetText(wishlistText, $"Wishlist: {blackboard.WishlistCount}");
             SetText(qualityText, $"Quality: {blackboard.QualityScore}");
         }
@@ -251,9 +252,46 @@ namespace Anchor.UI.Panel
             SetText(bugText, "Bug: --");
             SetText(viewText, "View: --");
             SetText(audioText, "Audio: --");
-            SetText(actionPointText, "AP: --");
+            ClearActionPointContainer();
             SetText(wishlistText, "Wishlist: --");
             SetText(qualityText, "Quality: --");
+        }
+
+        /// <summary>
+        /// 将当前剩余行动点数量交给 AP 容器刷新。
+        /// </summary>
+        private void SetActionPointContainer(int actionPointCount)
+        {
+            EnsureActionPointContainer();
+
+            if (actionPointContainer != null)
+            {
+                actionPointContainer.SetActionPointCount(actionPointCount);
+            }
+        }
+
+        /// <summary>
+        /// 流程数据不可用时清空 AP 容器。
+        /// </summary>
+        private void ClearActionPointContainer()
+        {
+            EnsureActionPointContainer();
+
+            if (actionPointContainer != null)
+            {
+                actionPointContainer.Clear();
+            }
+        }
+
+        /// <summary>
+        /// AP 容器未手动配置时，从 MainPanel 子级自动查找。
+        /// </summary>
+        private void EnsureActionPointContainer()
+        {
+            if (actionPointContainer == null)
+            {
+                actionPointContainer = GetComponentInChildren<APContainerController>(true);
+            }
         }
 
         /// <summary>
