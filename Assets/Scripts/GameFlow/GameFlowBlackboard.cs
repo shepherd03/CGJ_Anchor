@@ -18,6 +18,7 @@ namespace Anchor.GameFlow
         public int MonthIndex { get; private set; }
         public int WeekIndex { get; private set; }
         public int TotalWeekIndex { get; private set; }
+        public int ConsecutiveWeeksWithoutWeekStartEvent { get; private set; }
         public int RemainingActionPoints => CurrentWeekActionPower;
         public GamePlayer Player { get; } = new();
         public CharacterAttributeSet PlayerAttributes => Player.Attributes;
@@ -73,6 +74,7 @@ namespace Anchor.GameFlow
             MonthIndex = 0;
             WeekIndex = 0;
             TotalWeekIndex = 0;
+            ConsecutiveWeeksWithoutWeekStartEvent = 0;
             PlayerAttributes.Clear();
             foreach (var row in mAttributeCatalog.RowsById.Values)
             {
@@ -214,6 +216,13 @@ namespace Anchor.GameFlow
             {
                 mTriggeredEventIds.Add(eventId);
             }
+        }
+
+        public void RecordWeekStartEventRoll(int eventCount)
+        {
+            ConsecutiveWeeksWithoutWeekStartEvent = eventCount > 0
+                ? 0
+                : ConsecutiveWeeksWithoutWeekStartEvent + 1;
         }
 
         private int GetInt(int attributeId)

@@ -29,7 +29,7 @@ namespace Anchor.GameFlow
             Definitions = new GameFlowDefinitionProvider(Settings);
             ResolveService = new GameFlowResolveService();
             BuffShop = new BuffShopService(buffRows);
-            GameEvents = new GameEventService(eventRows);
+            GameEvents = new GameEventService(eventRows, Settings);
             mFsm = new FSM<GameFlowState>("GameFlowFSM");
 
             mFsm.Add(GameFlowState.NewGame, new NewGameState(mFsm, Blackboard, this));
@@ -85,7 +85,7 @@ namespace Anchor.GameFlow
 
         public IReadOnlyList<EventRow> RollWeekStartGameEvents()
         {
-            return GameEvents.RollWeekStartEvents(Blackboard);
+            return GameEvents.RollWeekStartEvents(Blackboard, Settings);
         }
 
         public IReadOnlyList<BuffRow> RefreshBudgetShopBuffOffers(int count = DefaultBudgetShopBuffOfferCount)

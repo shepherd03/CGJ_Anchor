@@ -239,6 +239,8 @@ triggerLessThanConditions 全部满足
 Ratio 随机判定通过
 ```
 
+满足触发条件的事件会先正常 Roll。若上一段连续周没有任何周开始事件，且本周正常 Roll 结果为空，则会从本周满足触发条件且 `ratio > 0` 的事件里按 `ratio` 权重强制补 1 个。最终命中的事件会随机打乱，并按 `GameFlowSettings.MaxWeekStartEvents` 截断，默认每周最多出现 2 个。
+
 触发后流程进入 `WeekEvent` 状态。UI 监听 `WeekGameEventTriggeredEvent` 显示事件标题和内容，然后调用 `ChooseWeekGameEventYes()` 或 `ChooseWeekGameEventNo()` 应用对应效果。没有触发事件时直接进入 `WeekAction`。
 
 ### 配表字段
