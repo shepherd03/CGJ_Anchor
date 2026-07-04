@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace Anchor.GameFlow
 {
@@ -19,9 +21,13 @@ namespace Anchor.GameFlow
             var atmosphereDelta = blackboard.WeeklyAtmosphereDelta;
             var bugDelta = blackboard.WeeklyBugDelta;
             var coinDelta = -(program + art + audio) * 35;
-            var wishlistDelta = 0;
-            wishlistDelta += GetWeeklyWishlistBonus(blackboard, program, art, audio, visualDelta, bugDelta);
-            wishlistDelta = (int)Math.Round(wishlistDelta * blackboard.CurrentWeekWishlistMultiplier);
+            var wishlistModifiers = BuildWeeklyWishlistModifiers(blackboard, program, art, audio, visualDelta, bugDelta);
+            var wishlistStartValue = blackboard.WishlistCount;
+            var wishlistDelta = ResolveWishlistModifiers(
+                wishlistModifiers,
+                wishlistStartValue,
+                out var wishlistEndValue,
+                out var resolvedWishlistModifiers);
             var resolvedQualityScore = GameFlowBlackboard.CalculateQualityScore(
                 blackboard.VisualScore + visualDelta,
                 blackboard.AtmosphereScore + atmosphereDelta,
@@ -43,6 +49,9 @@ namespace Anchor.GameFlow
                 bugDelta,
                 coinDelta,
                 wishlistDelta,
+                wishlistStartValue,
+                wishlistEndValue,
+                resolvedWishlistModifiers,
                 eventId,
                 summary);
         }
@@ -121,7 +130,7 @@ namespace Anchor.GameFlow
             };
         }
 
-        private static int GetWeeklyWishlistBonus(
+        private static List<WishlistModifier> BuildWeeklyWishlistModifiers(
             GameFlowBlackboard blackboard,
             int program,
             int art,
@@ -129,38 +138,122 @@ namespace Anchor.GameFlow
             int visualDelta,
             int bugDelta)
         {
-            var bonus = 0;
+            var modifiers = new List<WishlistModifier>(blackboard.WeeklyWishlistModifiers);
+            var sortOrder = 10000;
 
             if (blackboard.TotalWeekIndex == 3 ||
                 blackboard.TotalWeekIndex == 6 ||
                 blackboard.TotalWeekIndex == 9)
             {
-                bonus += blackboard.MilestoneWeekEndWishlistReward;
+                AddFlatModifier(modifiers, "第 3/6/9 周热度奖励", blackboard.MilestoneWeekEndWishlistReward, sortOrder++);
             }
 
             var resolvedBugScore = Math.Max(0, blackboard.BugScore + bugDelta);
             if (resolvedBugScore < 40)
             {
-                bonus += blackboard.LowBugWeeklyWishlistReward;
+                AddFlatModifier(modifiers, "低 Bug 口碑奖励", blackboard.LowBugWeeklyWishlistReward, sortOrder++);
             }
 
             var resolvedVisualScore = blackboard.VisualScore + visualDelta;
             if (resolvedVisualScore > 60)
             {
-                bonus += blackboard.HighVisualWeekEndWishlistGrowthBonus;
+                AddFlatModifier(modifiers, "高画面曝光奖励", blackboard.HighVisualWeekEndWishlistGrowthBonus, sortOrder++);
             }
 
             if (program > 0 && art > 0 && audio > 0)
             {
-                bonus += blackboard.AllRoomsSameWeekWishlistGrowthBonus;
+                AddFlatModifier(modifiers, "三房间协同奖励", blackboard.AllRoomsSameWeekWishlistGrowthBonus, sortOrder++);
             }
 
             if (blackboard.HasAnySameRoomSpentAsPreviousWeek())
             {
-                bonus += blackboard.SameRoomConsecutiveWishlistReward;
+                AddFlatModifier(modifiers, "连续同房间投入奖励", blackboard.SameRoomConsecutiveWishlistReward, sortOrder++);
             }
 
-            return bonus;
+            return modifiers;
+        }
+
+        private static void AddFlatModifier(List<WishlistModifier> modifiers, string sourceName, int value, int sortOrder)
+        {
+            if (value == 0)
+            {
+                return;
+            }
+
+            modifiers.Add(new WishlistModifier(sourceName, WishlistModifierKind.Flat, value, sortOrder));
+        }
+
+        private static int ResolveWishlistModifiers(
+            List<WishlistModifier> modifiers,
+            int wishlistStartValue,
+            out int wishlistEndValue,
+            out IReadOnlyList<WishlistModifierResult> resolvedModifiers)
+        {
+            if (modifiers == null || modifiers.Count == 0)
+            {
+                wishlistEndValue = Math.Max(0, wishlistStartValue);
+                resolvedModifiers = Array.Empty<WishlistModifierResult>();
+                return 0;
+            }
+
+            SortWishlistModifiers(modifiers);
+
+            var resolved = new List<WishlistModifierResult>(modifiers.Count);
+            var value = 0;
+            for (var i = 0; i < modifiers.Count; i++)
+            {
+                var modifier = modifiers[i];
+                var before = value;
+                value = ResolveWishlistModifierValue(before, modifier);
+                var beforeWishlistCount = Math.Max(0, wishlistStartValue + before);
+                var afterWishlistCount = Math.Max(0, wishlistStartValue + value);
+                resolved.Add(new WishlistModifierResult(
+                    modifier.SourceName,
+                    modifier.Kind,
+                    modifier.Value,
+                    before,
+                    value,
+                    beforeWishlistCount,
+                    afterWishlistCount));
+            }
+
+            resolvedModifiers = new ReadOnlyCollection<WishlistModifierResult>(resolved);
+            wishlistEndValue = Math.Max(0, wishlistStartValue + value);
+            return wishlistEndValue - wishlistStartValue;
+        }
+
+        private static void SortWishlistModifiers(List<WishlistModifier> modifiers)
+        {
+            modifiers.Sort((left, right) =>
+            {
+                var kindComparison = left.Kind.CompareTo(right.Kind);
+                if (kindComparison != 0)
+                {
+                    return kindComparison;
+                }
+
+                var orderComparison = left.SortOrder.CompareTo(right.SortOrder);
+                if (orderComparison != 0)
+                {
+                    return orderComparison;
+                }
+
+                return string.Compare(left.SourceName, right.SourceName, StringComparison.Ordinal);
+            });
+        }
+
+        private static int ResolveWishlistModifierValue(int currentValue, WishlistModifier modifier)
+        {
+            switch (modifier.Kind)
+            {
+                case WishlistModifierKind.Flat:
+                    return currentValue + modifier.Value;
+                case WishlistModifierKind.Multiplier:
+                    var multiplier = Math.Max(0f, 1f + modifier.Value / 100f);
+                    return (int)Math.Round(currentValue * multiplier);
+                default:
+                    return currentValue;
+            }
         }
     }
 }

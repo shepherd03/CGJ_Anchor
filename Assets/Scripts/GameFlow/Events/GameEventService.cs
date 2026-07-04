@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Anchor.Character.Attributes;
 using Orange.Extraction;
 
 using EventRow = Anchor.Config.game.gameEvent;
@@ -308,10 +309,27 @@ namespace Anchor.GameFlow.Events
             for (var i = 0; i < effects.Length; i++)
             {
                 RequireWritableAttributePair(blackboard, row, fieldName, effects[i], i, out var attributeId, out var delta);
+                if (attributeId == CharacterAttributeIds.Wishlist)
+                {
+                    blackboard.AddWeeklyWishlistFlatModifier(GetEventWishlistSourceName(row, chooseYes), delta);
+                    continue;
+                }
+
                 blackboard.PlayerAttributes.Add(attributeId, delta);
             }
 
             return effects.Length;
+        }
+
+        private static string GetEventWishlistSourceName(EventRow row, bool chooseYes)
+        {
+            if (row == null)
+            {
+                return chooseYes ? "周事件愿望单奖励（Y）" : "周事件愿望单奖励（N）";
+            }
+
+            var title = string.IsNullOrWhiteSpace(row.Title) ? $"事件 {row.Id}" : row.Title;
+            return chooseYes ? $"事件：{title}（Y）" : $"事件：{title}（N）";
         }
 
         private static void RequireReadableAttributePair(

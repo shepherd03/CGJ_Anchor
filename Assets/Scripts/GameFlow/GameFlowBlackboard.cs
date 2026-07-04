@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using Anchor.Character;
 using Anchor.Character.Attributes;
 
@@ -10,11 +11,14 @@ namespace Anchor.GameFlow
         private readonly Dictionary<GameDevelopmentTrack, int> mActionAllocations = new();
         private readonly List<int> mActiveBuffIds = new();
         private readonly List<int> mTriggeredEventIds = new();
+        private readonly List<WishlistModifier> mWeeklyWishlistModifiers = new();
+        private readonly ReadOnlyCollection<WishlistModifier> mReadOnlyWeeklyWishlistModifiers;
         private readonly CharacterAttributeCatalog mAttributeCatalog;
         private readonly Random mRandom = new();
         private readonly HashSet<GameDevelopmentTrack> mPreviousWeekSpentTracks = new();
         private float mCurrentWeekWishlistMultiplier = 1f;
         private int mWeekStartWishlistCount;
+        private int mWeeklyWishlistModifierSequence;
 
         public int MonthIndex { get; private set; }
         public int WeekIndex { get; private set; }
@@ -77,10 +81,12 @@ namespace Anchor.GameFlow
         public IReadOnlyDictionary<GameDevelopmentTrack, int> ActionAllocations => mActionAllocations;
         public IReadOnlyList<int> ActiveBuffIds => mActiveBuffIds;
         public IReadOnlyList<int> TriggeredEventIds => mTriggeredEventIds;
+        public IReadOnlyList<WishlistModifier> WeeklyWishlistModifiers => mReadOnlyWeeklyWishlistModifiers;
 
         public GameFlowBlackboard(CharacterAttributeCatalog attributeCatalog)
         {
             mAttributeCatalog = attributeCatalog ?? throw new ArgumentNullException(nameof(attributeCatalog));
+            mReadOnlyWeeklyWishlistModifiers = mWeeklyWishlistModifiers.AsReadOnly();
             RequireCoreAttributes();
         }
 
@@ -103,8 +109,10 @@ namespace Anchor.GameFlow
             mActionAllocations.Clear();
             mActiveBuffIds.Clear();
             mTriggeredEventIds.Clear();
+            mWeeklyWishlistModifiers.Clear();
             mPreviousWeekSpentTracks.Clear();
             mCurrentWeekWishlistMultiplier = 1f;
+            mWeeklyWishlistModifierSequence = 0;
             mWeekStartWishlistCount = WishlistCount;
             LastWeekWishlistDelta = 0;
         }
@@ -201,6 +209,7 @@ namespace Anchor.GameFlow
 
             RecordResolvedWeekSpentTracks();
             ClearWeeklyActionDeltas();
+            ClearWeeklyWishlistModifiers();
         }
 
         public void ApplyMonthSettlement(MonthSettlementResult result)
@@ -294,9 +303,38 @@ namespace Anchor.GameFlow
                 : ConsecutiveWeeksWithoutWeekStartEvent + 1;
         }
 
+        public void AddWeeklyWishlistFlatModifier(string sourceName, int amount)
+        {
+            if (amount == 0)
+            {
+                return;
+            }
+
+            AddWeeklyWishlistModifier(sourceName, WishlistModifierKind.Flat, amount);
+        }
+
+        public void AddWeeklyWishlistPercentModifier(string sourceName, int percent)
+        {
+            if (percent == 0)
+            {
+                return;
+            }
+
+            AddWeeklyWishlistModifier(sourceName, WishlistModifierKind.Multiplier, percent);
+        }
+
         private int GetInt(int attributeId)
         {
             return (int)PlayerAttributes.Get(attributeId);
+        }
+
+        private void AddWeeklyWishlistModifier(string sourceName, WishlistModifierKind kind, int value)
+        {
+            mWeeklyWishlistModifiers.Add(new WishlistModifier(
+                sourceName,
+                kind,
+                value,
+                mWeeklyWishlistModifierSequence++));
         }
 
         private void ResetWeeklyRoomOperationCounts()
@@ -363,9 +401,14 @@ namespace Anchor.GameFlow
         private void RollWeekStartWishlistMultiplier()
         {
             var percentBonus = WeekStartWishlistChanceMultiplier;
-            mCurrentWeekWishlistMultiplier = percentBonus > 0 && mRandom.NextDouble() < 0.5d
-                ? 1f + percentBonus / 100f
-                : 1f;
+            if (percentBonus > 0 && mRandom.NextDouble() < 0.5d)
+            {
+                mCurrentWeekWishlistMultiplier = 1f + percentBonus / 100f;
+                AddWeeklyWishlistPercentModifier("周开始热度倍率", percentBonus);
+                return;
+            }
+
+            mCurrentWeekWishlistMultiplier = 1f;
         }
 
         private void RecordResolvedWeekSpentTracks()
@@ -392,7 +435,7 @@ namespace Anchor.GameFlow
                         CharacterAttributeIds.ProgramTwoActionBugDeltaMin,
                         CharacterAttributeIds.ProgramTwoActionBugDeltaMax));
                     AddClamped(CharacterAttributeIds.Bug, WeeklyProgramActionBugDelta * points);
-                    AddRoomWishlistReward(points, ProgramRoomOneActionWishlistReward, ProgramRoomTwoActionWishlistReward, ProgramRoomPerActionWishlistReward);
+                    AddRoomWishlistReward(track, points, ProgramRoomOneActionWishlistReward, ProgramRoomTwoActionWishlistReward, ProgramRoomPerActionWishlistReward);
                     break;
                 case GameDevelopmentTrack.Art:
                     PlayerAttributes.Add(CharacterAttributeIds.Visual, GetRoomActionDelta(
@@ -402,7 +445,7 @@ namespace Anchor.GameFlow
                         CharacterAttributeIds.ArtTwoActionVisualDeltaMin,
                         CharacterAttributeIds.ArtTwoActionVisualDeltaMax));
                     PlayerAttributes.Add(CharacterAttributeIds.Visual, WeeklyArtActionVisualDelta * points);
-                    AddRoomWishlistReward(points, ArtRoomOneActionWishlistReward, ArtRoomTwoActionWishlistReward, ArtRoomPerActionWishlistReward);
+                    AddRoomWishlistReward(track, points, ArtRoomOneActionWishlistReward, ArtRoomTwoActionWishlistReward, ArtRoomPerActionWishlistReward);
                     break;
                 case GameDevelopmentTrack.Audio:
                     PlayerAttributes.Add(CharacterAttributeIds.Atmosphere, GetRoomActionDelta(
@@ -412,7 +455,7 @@ namespace Anchor.GameFlow
                         CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMin,
                         CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMax));
                     PlayerAttributes.Add(CharacterAttributeIds.Atmosphere, WeeklyAudioActionAtmosphereDelta * points);
-                    AddRoomWishlistReward(points, AudioRoomOneActionWishlistReward, AudioRoomTwoActionWishlistReward, AudioRoomPerActionWishlistReward);
+                    AddRoomWishlistReward(track, points, AudioRoomOneActionWishlistReward, AudioRoomTwoActionWishlistReward, AudioRoomPerActionWishlistReward);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(track), track, null);
@@ -431,14 +474,27 @@ namespace Anchor.GameFlow
                 : GetRandomInclusive(GetInt(twoPointMinId), GetInt(twoPointMaxId));
         }
 
-        private void AddRoomWishlistReward(int points, int onePointReward, int twoPointReward, int perPointReward)
+        private void AddRoomWishlistReward(GameDevelopmentTrack track, int points, int onePointReward, int twoPointReward, int perPointReward)
         {
             var tierReward = points == 1 ? onePointReward : twoPointReward;
             var reward = tierReward + perPointReward * points;
             if (reward != 0)
             {
-                AddClamped(CharacterAttributeIds.Wishlist, reward);
+                AddWeeklyWishlistFlatModifier(GetRoomWishlistRewardSourceName(track, points), reward);
             }
+        }
+
+        private static string GetRoomWishlistRewardSourceName(GameDevelopmentTrack track, int points)
+        {
+            var roomName = track switch
+            {
+                GameDevelopmentTrack.Program => "程序房间",
+                GameDevelopmentTrack.Art => "美术房间",
+                GameDevelopmentTrack.Audio => "音效房间",
+                _ => "未知房间"
+            };
+
+            return $"{roomName} {points}AP 愿望单奖励";
         }
 
         private int GetRandomInclusive(int minValue, int maxValue)
@@ -463,6 +519,12 @@ namespace Anchor.GameFlow
             PlayerAttributes.Set(CharacterAttributeIds.WeeklyProgramActionBugDelta, 0);
             PlayerAttributes.Set(CharacterAttributeIds.WeeklyArtActionVisualDelta, 0);
             PlayerAttributes.Set(CharacterAttributeIds.WeeklyAudioActionAtmosphereDelta, 0);
+        }
+
+        private void ClearWeeklyWishlistModifiers()
+        {
+            mWeeklyWishlistModifiers.Clear();
+            mWeeklyWishlistModifierSequence = 0;
         }
 
         private void RequireCoreAttributes()

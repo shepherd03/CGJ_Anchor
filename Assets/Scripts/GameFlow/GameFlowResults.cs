@@ -1,7 +1,12 @@
+using System;
+using System.Collections.Generic;
+
 namespace Anchor.GameFlow
 {
     public readonly struct WeekResolveResult
     {
+        private static readonly WishlistModifierResult[] EmptyWishlistModifiers = Array.Empty<WishlistModifierResult>();
+
         public readonly int MonthIndex;
         public readonly int WeekIndex;
         public readonly int VisualDelta;
@@ -9,8 +14,14 @@ namespace Anchor.GameFlow
         public readonly int BugDelta;
         public readonly int CoinDelta;
         public readonly int WishlistDelta;
+        public readonly int WishlistStartValue;
+        public readonly int WishlistEndValue;
+        public readonly IReadOnlyList<WishlistModifierResult> WishlistModifiers;
         public readonly int EventId;
         public readonly string Summary;
+
+        public IReadOnlyList<WishlistModifierResult> WishlistModifiersOrEmpty =>
+            WishlistModifiers ?? EmptyWishlistModifiers;
 
         public WeekResolveResult(
             int monthIndex,
@@ -20,6 +31,9 @@ namespace Anchor.GameFlow
             int bugDelta,
             int coinDelta,
             int wishlistDelta,
+            int wishlistStartValue,
+            int wishlistEndValue,
+            IReadOnlyList<WishlistModifierResult> wishlistModifiers,
             int eventId,
             string summary)
         {
@@ -30,6 +44,9 @@ namespace Anchor.GameFlow
             BugDelta = bugDelta;
             CoinDelta = coinDelta;
             WishlistDelta = wishlistDelta;
+            WishlistStartValue = wishlistStartValue;
+            WishlistEndValue = wishlistEndValue;
+            WishlistModifiers = wishlistModifiers ?? EmptyWishlistModifiers;
             EventId = eventId;
             Summary = summary;
         }

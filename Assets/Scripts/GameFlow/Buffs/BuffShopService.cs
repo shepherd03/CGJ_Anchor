@@ -53,9 +53,15 @@ namespace Anchor.GameFlow.Buffs
             }
 
             var pool = new WeightedExtractionPool<BuffRow, GameFlowBlackboard>();
+            var pooledBuffIds = new HashSet<int>();
             foreach (var row in mBuffRows)
             {
                 if (row.Id <= 0 || row.Weight < 0)
+                {
+                    continue;
+                }
+
+                if (!pooledBuffIds.Add(row.Id))
                 {
                     continue;
                 }
@@ -67,9 +73,13 @@ namespace Anchor.GameFlow.Buffs
                     IsDrawable);
             }
 
+            var offeredBuffIds = new HashSet<int>();
             foreach (var result in pool.DrawManyUnique(blackboard, count))
             {
-                mCurrentOffers.Add(result.Item);
+                if (offeredBuffIds.Add(result.Item.Id))
+                {
+                    mCurrentOffers.Add(result.Item);
+                }
             }
 
             return CurrentOffers;
@@ -226,8 +236,26 @@ namespace Anchor.GameFlow.Buffs
             for (var i = 0; i < buff.Effects.Length; i++)
             {
                 var pair = buff.Effects[i];
+                if (pair[0] == CharacterAttributeIds.Wishlist)
+                {
+                    blackboard.AddWeeklyWishlistFlatModifier(GetBuffWishlistSourceName(buff), pair[1]);
+                    continue;
+                }
+
                 blackboard.PlayerAttributes.Add(pair[0], pair[1]);
             }
+        }
+
+        private static string GetBuffWishlistSourceName(BuffRow buff)
+        {
+            if (buff == null)
+            {
+                return "Buff 愿望单奖励";
+            }
+
+            return string.IsNullOrWhiteSpace(buff.Title)
+                ? $"Buff {buff.Id} 愿望单奖励"
+                : $"Buff：{buff.Title}";
         }
 
         private static bool TryValidateEffects(

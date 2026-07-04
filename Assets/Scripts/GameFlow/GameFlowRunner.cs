@@ -306,6 +306,11 @@ namespace Anchor.GameFlow
             }
 
             Debug.Log("[游戏流程] " + flowEvent.Result.Summary);
+            foreach (var modifier in flowEvent.Result.WishlistModifiersOrEmpty)
+            {
+                Debug.Log(
+                    $"[游戏流程] 愿望单来源：{modifier.SourceName} {modifier.DisplayValue} => {modifier.DeltaText}，{modifier.BeforeWishlistCount} -> {modifier.AfterWishlistCount}");
+            }
         }
 
         private void OnWeekGameEventTriggered(WeekGameEventTriggeredEvent flowEvent)
