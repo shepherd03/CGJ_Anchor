@@ -282,6 +282,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1586174060}
     m_Modifications:
+    - target: {fileID: 58217359995700264, guid: 7b0799b0bc4121045abdf2da29a148cc, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 5b7a56c2c6cbe5649bfd1a78ae69a5c3, type: 3}
+    - target: {fileID: 2624668293067391243, guid: 7b0799b0bc4121045abdf2da29a148cc, type: 3}
+      propertyPath: mValueKind
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 2624668293067391243, guid: 7b0799b0bc4121045abdf2da29a148cc, type: 3}
       propertyPath: mIconSprite
       value: 
@@ -374,6 +382,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6771195995720317814, guid: 7b0799b0bc4121045abdf2da29a148cc, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 5b7a56c2c6cbe5649bfd1a78ae69a5c3, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -568,6 +580,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1586174060}
     m_Modifications:
+    - target: {fileID: 2624668293067391243, guid: 7b0799b0bc4121045abdf2da29a148cc, type: 3}
+      propertyPath: mBurstSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 5df0556c45610e84c8c658f67285a83e, type: 3}
     - target: {fileID: 2624668293067391243, guid: 7b0799b0bc4121045abdf2da29a148cc, type: 3}
       propertyPath: mEffectLayer
       value: 
