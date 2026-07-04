@@ -19,6 +19,7 @@ public sealed partial class buff : Luban.BeanBase
         Id = _buf.ReadInt();
         Title = _buf.ReadString();
         Content = _buf.ReadString();
+        Icon = _buf.ReadString();
         {int __n0 = _buf.ReadSize(); Effects = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} Effects[__index0] = __e0;}}
         Cost = _buf.ReadInt();
         Weight = _buf.ReadInt();
@@ -41,6 +42,10 @@ public sealed partial class buff : Luban.BeanBase
     /// BUFF介绍
     /// </summary>
     public readonly string Content;
+    /// <summary>
+    /// BUFF图标路径，留空表示暂无图标
+    /// </summary>
+    public readonly string Icon;
     /// <summary>
     /// BUFF对属性的修改，格式[[属性ID,值]]
     /// </summary>
@@ -67,6 +72,7 @@ public sealed partial class buff : Luban.BeanBase
         + "id:" + Id + ","
         + "title:" + Title + ","
         + "content:" + Content + ","
+        + "icon:" + Icon + ","
         + "effects:" + Luban.StringUtil.CollectionToString(Effects) + ","
         + "cost:" + Cost + ","
         + "weight:" + Weight + ","
