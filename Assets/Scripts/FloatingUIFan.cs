@@ -42,14 +42,30 @@ public sealed class FloatingUIFan : MonoBehaviour
         authoredLayouts = CaptureAuthoredLayouts(cards);
     }
 
-    private void Start()
+    /// <summary>
+    /// UI 激活时播放扇形展开动画。
+    /// </summary>
+    private void OnEnable()
     {
         PlayOpenAnimation();
     }
 
+    /// <summary>
+    /// UI 关闭时停止所有卡牌 Tween。
+    /// </summary>
+    private void OnDisable()
+    {
+        CloseAnimation();
+    }
+
+    /// <summary>
+    /// 播放卡牌从收起状态展开到配置布局的动画。
+    /// </summary>
     [ContextMenu("Play Open Animation")]
     public void PlayOpenAnimation()
     {
+        EnsureCardsReady();
+
         if (cards == null || cards.Length == 0)
             return;
 
@@ -76,6 +92,26 @@ public sealed class FloatingUIFan : MonoBehaviour
             int index = i;
             opening.OnComplete(() => StartFloating(index));
         }
+    }
+
+    /// <summary>
+    /// 关闭动画并停止所有浮动 Tween。
+    /// </summary>
+    public void CloseAnimation()
+    {
+        KillAllTweens();
+    }
+
+    /// <summary>
+    /// 确保卡牌缓存和初始布局已经存在。
+    /// </summary>
+    private void EnsureCardsReady()
+    {
+        if (cards != null && authoredLayouts != null)
+            return;
+
+        cards = CollectCards();
+        authoredLayouts = CaptureAuthoredLayouts(cards);
     }
 
     private void StartFloating(int index)
@@ -164,9 +200,12 @@ public sealed class FloatingUIFan : MonoBehaviour
         floatDelayStep = Mathf.Max(0f, floatDelayStep);
     }
 
+    /// <summary>
+    /// 对象销毁时清理所有卡牌 Tween。
+    /// </summary>
     private void OnDestroy()
     {
-        KillAllTweens();
+        CloseAnimation();
     }
 
     private void KillAllTweens()

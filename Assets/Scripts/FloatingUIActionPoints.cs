@@ -37,13 +37,36 @@ public sealed class FloatingUIActionPoints : MonoBehaviour
         HideWarningImmediate();
     }
 
+    /// <summary>
+    /// 组件启用时显示动态创建的行动点 HUD。
+    /// </summary>
+    private void OnEnable()
+    {
+        SetHudVisible(true);
+    }
+
+    /// <summary>
+    /// 组件关闭时隐藏 HUD 并停止警告动画。
+    /// </summary>
+    private void OnDisable()
+    {
+        StopWarningRoutine();
+        HideWarningImmediate();
+        SetHudVisible(false);
+    }
+
     private void OnValidate()
     {
         ClampSettings();
     }
 
+    /// <summary>
+    /// 对象销毁时解绑卡牌按钮并销毁动态 HUD。
+    /// </summary>
     private void OnDestroy()
     {
+        StopWarningRoutine();
+
         for (int i = 0; i < boundButtons.Count; i++)
         {
             if (boundButtons[i] != null && i < boundCallbacks.Count)
@@ -252,6 +275,27 @@ public sealed class FloatingUIActionPoints : MonoBehaviour
     {
         if (warningGroup != null)
             warningGroup.alpha = 0f;
+    }
+
+    /// <summary>
+    /// 停止行动点不足警告动画。
+    /// </summary>
+    private void StopWarningRoutine()
+    {
+        if (warningRoutine == null)
+            return;
+
+        StopCoroutine(warningRoutine);
+        warningRoutine = null;
+    }
+
+    /// <summary>
+    /// 控制动态创建的行动点 HUD 显示或隐藏。
+    /// </summary>
+    private void SetHudVisible(bool isVisible)
+    {
+        if (hudCanvas != null)
+            hudCanvas.gameObject.SetActive(isVisible);
     }
 
     private static IEnumerator EnsureEventSystemAfterStartup()
