@@ -24,9 +24,17 @@ namespace Anchor.Window
         [SerializeField, Tooltip("是否忽略 Time.timeScale，暂停菜单弹窗建议开启。")]
         private bool ignoreTimeScale;
 
+        [Header("Close")]
+        [SerializeField, Min(0f), Tooltip("关闭时回到起始点的动画时长。为 0 时直接隐藏。")]
+        private float closeDuration = 0.2f;
+
+        [SerializeField, Tooltip("关闭时回到起始点的动画曲线。")]
+        private Ease closeEase = Ease.InBack;
+
         private RectTransform cachedRectTransform;
         private Vector2 targetAnchoredPosition;
         private Tweener dropTween;
+        private bool hasCapturedTargetPosition;
 
         /// <summary>
         /// 当前弹窗是否正在播放下落回弹动画。
@@ -45,6 +53,7 @@ namespace Anchor.Window
         {
             cachedRectTransform = GetComponent<RectTransform>();
             targetAnchoredPosition = cachedRectTransform.anchoredPosition;
+            hasCapturedTargetPosition = true;
             ClampSettings();
         }
 
@@ -84,6 +93,54 @@ namespace Anchor.Window
         }
 
         /// <summary>
+        /// 打开弹窗入口：未激活时先激活，由 OnEnable 播放下落回弹；已激活时直接重播动画。
+        /// </summary>
+        [ContextMenu("Open")]
+        public void Open()
+        {
+            EnsureRectTransform();
+
+            if (!gameObject.activeSelf)
+            {
+                gameObject.SetActive(true);
+                return;
+            }
+
+            PlayDropBounce();
+        }
+
+        /// <summary>
+        /// 关闭弹窗入口：播放回到起始点的收起动画，结束后隐藏当前物体。
+        /// </summary>
+        [ContextMenu("Close")]
+        public void Close()
+        {
+            EnsureRectTransform();
+            ClampSettings();
+
+            if (!gameObject.activeSelf)
+            {
+                return;
+            }
+
+            KillDropTween();
+
+            if (closeDuration <= 0f)
+            {
+                gameObject.SetActive(false);
+                return;
+            }
+
+            dropTween = cachedRectTransform
+                .DOAnchorPos(startAnchoredPosition, closeDuration)
+                .SetEase(closeEase)
+                .SetUpdate(ignoreTimeScale)
+                .SetTarget(this)
+                .OnComplete(() => gameObject.SetActive(false))
+                .OnKill(() => dropTween = null);
+        }
+
+        /// <summary>
         /// 把当前 anchoredPosition 重新记录为落点，适合运行时布局变化后调用。
         /// </summary>
         [ContextMenu("Capture Current As Target")]
@@ -91,6 +148,7 @@ namespace Anchor.Window
         {
             EnsureRectTransform();
             targetAnchoredPosition = cachedRectTransform.anchoredPosition;
+            hasCapturedTargetPosition = true;
         }
 
         /// <summary>
@@ -124,6 +182,12 @@ namespace Anchor.Window
             {
                 cachedRectTransform = GetComponent<RectTransform>();
             }
+
+            if (!hasCapturedTargetPosition && cachedRectTransform != null)
+            {
+                targetAnchoredPosition = cachedRectTransform.anchoredPosition;
+                hasCapturedTargetPosition = true;
+            }
         }
 
         /// <summary>
@@ -132,6 +196,7 @@ namespace Anchor.Window
         private void ClampSettings()
         {
             dropDuration = Mathf.Max(0f, dropDuration);
+            closeDuration = Mathf.Max(0f, closeDuration);
             bounceOvershoot = Mathf.Max(0f, bounceOvershoot);
         }
     }
