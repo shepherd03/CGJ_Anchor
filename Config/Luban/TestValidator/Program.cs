@@ -111,11 +111,11 @@ static void ValidateBuffs(
         CheckRequired("Buff", row.Id, "title", row.Title, errors);
         CheckRequired("Buff", row.Id, "content", row.Content, errors);
         CheckCost("Buff", row.Id, row.Cost, errors);
+        CheckWeight("Buff", row.Id, row.Weight, errors);
         CheckAttributePairs("Buff", row.Id, "effects", row.Effects, playerAttributeIds, errors);
-        CheckAttributePairs("Buff", row.Id, "triggerConditions", row.TriggerConditions, playerAttributeIds, errors);
 
         output.AppendLine(
-            $"  Buff[{row.Id}] title={row.Title}, type={row.Type}, cost={row.Cost}, effects={FormatPairs(row.Effects)}, triggers={FormatPairs(row.TriggerConditions)}");
+            $"  Buff[{row.Id}] title={row.Title}, cost={row.Cost}, weight={row.Weight}, effects={FormatPairs(row.Effects)}");
     }
 }
 
@@ -143,6 +143,12 @@ static void CheckCost(string table, int id, int cost, ICollection<string> errors
 {
     if (cost < 0)
         errors.Add($"{table}[{id}] cost is negative: {cost}.");
+}
+
+static void CheckWeight(string table, int id, int weight, ICollection<string> errors)
+{
+    if (weight < 0)
+        errors.Add($"{table}[{id}] weight is negative: {weight}.");
 }
 
 static void CheckAttributePairs(

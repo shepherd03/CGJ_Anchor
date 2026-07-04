@@ -58,7 +58,7 @@ namespace Anchor.GameFlow
             var month = blackboard.CurrentMonth ?? throw new InvalidOperationException("Cannot settle month before BeginMonth.");
             var bugPenalty = Math.Max(0f, blackboard.BugScore * 0.35f);
             var qualityFactor = Math.Max(0f, blackboard.QualityScore - bugPenalty);
-            var wishlistDelta = blackboard.MonthlyWishlistGrowth + (int)Math.Round(qualityFactor * GetWishlistMultiplier(month.SettlementType));
+            var wishlistDelta = blackboard.WeeklyWishlistGrowth + (int)Math.Round(qualityFactor * GetWishlistMultiplier(month.SettlementType));
             var coinDelta = GetCoinDelta(month.SettlementType, wishlistDelta, blackboard.BugScore);
             var qualityDelta = 0;
             var bugDelta = month.SettlementType == MonthSettlementType.ClosedBeta ? -Math.Min(blackboard.BugScore, 8) : 0;

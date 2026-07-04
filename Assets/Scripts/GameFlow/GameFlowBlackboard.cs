@@ -21,7 +21,7 @@ namespace Anchor.GameFlow
         public int BaseWeeklyActionPower => GetInt(CharacterAttributeIds.BaseWeeklyActionPower);
         public int CurrentWeekActionPower => GetInt(CharacterAttributeIds.WeeklyActionPower);
         public int MonthlyCoinIncome => GetInt(CharacterAttributeIds.MonthlyCoinIncome);
-        public int MonthlyWishlistGrowth => GetInt(CharacterAttributeIds.MonthlyWishlistGrowth);
+        public int WeeklyWishlistGrowth => GetInt(CharacterAttributeIds.WeeklyWishlistGrowth);
         public int Coins => GetInt(CharacterAttributeIds.Coins);
         public int WishlistCount => GetInt(CharacterAttributeIds.Wishlist);
         public int QualityScore => PlayerAttributes.Get(CharacterAttributeIds.Quality);
@@ -141,7 +141,7 @@ namespace Anchor.GameFlow
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.BaseWeeklyActionPower);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyActionPower);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.MonthlyCoinIncome);
-            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.MonthlyWishlistGrowth);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyWishlistGrowth);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Bug);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Visual);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Atmosphere);

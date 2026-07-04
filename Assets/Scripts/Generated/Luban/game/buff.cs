@@ -19,10 +19,9 @@ public sealed partial class buff : Luban.BeanBase
         Id = _buf.ReadInt();
         Title = _buf.ReadString();
         Content = _buf.ReadString();
-        Type = _buf.ReadInt();
         {int __n0 = _buf.ReadSize(); Effects = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} Effects[__index0] = __e0;}}
-        {int __n0 = _buf.ReadSize(); TriggerConditions = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} TriggerConditions[__index0] = __e0;}}
         Cost = _buf.ReadInt();
+        Weight = _buf.ReadInt();
     }
 
     public static buff Deserializebuff(ByteBuf _buf)
@@ -35,29 +34,25 @@ public sealed partial class buff : Luban.BeanBase
     /// </summary>
     public readonly int Id;
     /// <summary>
-    /// BUFF标题
+    /// BUFF名字
     /// </summary>
     public readonly string Title;
     /// <summary>
-    /// BUFF内容
+    /// BUFF介绍
     /// </summary>
     public readonly string Content;
     /// <summary>
-    /// TYPE
-    /// </summary>
-    public readonly int Type;
-    /// <summary>
-    /// BUFF生效时的属性修改，格式[[属性ID,值]]
+    /// BUFF对属性的修改，格式[[属性ID,值]]
     /// </summary>
     public readonly int[][] Effects;
     /// <summary>
-    /// BUFF触发条件，格式[[属性ID,阈值]]；阈值语义由运行时解释
-    /// </summary>
-    public readonly int[][] TriggerConditions;
-    /// <summary>
-    /// Cost
+    /// BUFF花费
     /// </summary>
     public readonly int Cost;
+    /// <summary>
+    /// BUFF权重
+    /// </summary>
+    public readonly int Weight;
    
     public const int __ID__ = 955376847;
     public override int GetTypeId() => __ID__;
@@ -72,10 +67,9 @@ public sealed partial class buff : Luban.BeanBase
         + "id:" + Id + ","
         + "title:" + Title + ","
         + "content:" + Content + ","
-        + "type:" + Type + ","
         + "effects:" + Luban.StringUtil.CollectionToString(Effects) + ","
-        + "triggerConditions:" + Luban.StringUtil.CollectionToString(TriggerConditions) + ","
         + "cost:" + Cost + ","
+        + "weight:" + Weight + ","
         + "}";
     }
 }

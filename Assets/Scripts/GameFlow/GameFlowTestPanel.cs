@@ -66,20 +66,20 @@ namespace Anchor.GameFlow
             Refresh();
         }
 
-        public void 开始新游戏()
+        public void StartNewGame()
         {
             EnsureRunner();
             mRunner.StartNewGame();
             AddLog("开始新游戏");
         }
 
-        public void 下一步()
+        public void AdvanceStep()
         {
             EnsureRunner();
             var controller = mRunner.Controller;
             if (controller == null || controller.MachineState == MachineState.End)
             {
-                开始新游戏();
+                StartNewGame();
                 return;
             }
 
@@ -99,7 +99,7 @@ namespace Anchor.GameFlow
                     AddLog("继续流程");
                     break;
                 case GameFlowState.Ending:
-                    开始新游戏();
+                    StartNewGame();
                     break;
                 default:
                     mRunner.ContinueFlow();
@@ -108,13 +108,13 @@ namespace Anchor.GameFlow
             }
         }
 
-        public void 下一周()
+        public void AdvanceWeek()
         {
             EnsureRunner();
             var controller = mRunner.Controller;
             if (controller == null || controller.MachineState == MachineState.End)
             {
-                开始新游戏();
+                StartNewGame();
                 return;
             }
 
@@ -143,47 +143,47 @@ namespace Anchor.GameFlow
             AddLog("当前状态无法直接进入下一周");
         }
 
-        public void 投入程序()
+        public void AllocateProgram()
         {
-            消费行动点(GameDevelopmentTrack.Program, "程序");
+            AllocateActionPoint(GameDevelopmentTrack.Program, "程序");
         }
 
-        public void 投入画面()
+        public void AllocateArt()
         {
-            消费行动点(GameDevelopmentTrack.Art, "画面");
+            AllocateActionPoint(GameDevelopmentTrack.Art, "画面");
         }
 
-        public void 投入氛围()
+        public void AllocateDesign()
         {
-            消费行动点(GameDevelopmentTrack.Design, "氛围");
+            AllocateActionPoint(GameDevelopmentTrack.Design, "氛围");
         }
 
-        public void 投入测试()
+        public void AllocateTesting()
         {
-            消费行动点(GameDevelopmentTrack.Testing, "测试");
+            AllocateActionPoint(GameDevelopmentTrack.Testing, "测试");
         }
 
-        public void 投入宣传()
+        public void AllocateMarketing()
         {
-            消费行动点(GameDevelopmentTrack.Marketing, "宣传");
+            AllocateActionPoint(GameDevelopmentTrack.Marketing, "宣传");
         }
 
-        public void 行动力加一()
+        public void AddWeeklyActionPower()
         {
             AddAttribute(CharacterAttributeIds.WeeklyActionPower, 1);
         }
 
-        public void 金币加一百()
+        public void AddCoins()
         {
             AddAttribute(CharacterAttributeIds.Coins, 100);
         }
 
-        public void Bug加五()
+        public void AddBug()
         {
             AddAttribute(CharacterAttributeIds.Bug, 5);
         }
 
-        private void 消费行动点(GameDevelopmentTrack track, string displayName)
+        private void AllocateActionPoint(GameDevelopmentTrack track, string displayName)
         {
             EnsureRunner();
             var success = mRunner.TryAllocateActionPoints(track, 1);
@@ -205,32 +205,32 @@ namespace Anchor.GameFlow
 
         private void BindButtons()
         {
-            if (mStartButton != null) mStartButton.onClick.AddListener(开始新游戏);
-            if (mNextStepButton != null) mNextStepButton.onClick.AddListener(下一步);
-            if (mNextWeekButton != null) mNextWeekButton.onClick.AddListener(下一周);
-            if (mProgramButton != null) mProgramButton.onClick.AddListener(投入程序);
-            if (mArtButton != null) mArtButton.onClick.AddListener(投入画面);
-            if (mDesignButton != null) mDesignButton.onClick.AddListener(投入氛围);
-            if (mTestingButton != null) mTestingButton.onClick.AddListener(投入测试);
-            if (mMarketingButton != null) mMarketingButton.onClick.AddListener(投入宣传);
-            if (mActionPowerButton != null) mActionPowerButton.onClick.AddListener(行动力加一);
-            if (mCoinsButton != null) mCoinsButton.onClick.AddListener(金币加一百);
-            if (mBugButton != null) mBugButton.onClick.AddListener(Bug加五);
+            if (mStartButton != null) mStartButton.onClick.AddListener(StartNewGame);
+            if (mNextStepButton != null) mNextStepButton.onClick.AddListener(AdvanceStep);
+            if (mNextWeekButton != null) mNextWeekButton.onClick.AddListener(AdvanceWeek);
+            if (mProgramButton != null) mProgramButton.onClick.AddListener(AllocateProgram);
+            if (mArtButton != null) mArtButton.onClick.AddListener(AllocateArt);
+            if (mDesignButton != null) mDesignButton.onClick.AddListener(AllocateDesign);
+            if (mTestingButton != null) mTestingButton.onClick.AddListener(AllocateTesting);
+            if (mMarketingButton != null) mMarketingButton.onClick.AddListener(AllocateMarketing);
+            if (mActionPowerButton != null) mActionPowerButton.onClick.AddListener(AddWeeklyActionPower);
+            if (mCoinsButton != null) mCoinsButton.onClick.AddListener(AddCoins);
+            if (mBugButton != null) mBugButton.onClick.AddListener(AddBug);
         }
 
         private void UnbindButtons()
         {
-            if (mStartButton != null) mStartButton.onClick.RemoveListener(开始新游戏);
-            if (mNextStepButton != null) mNextStepButton.onClick.RemoveListener(下一步);
-            if (mNextWeekButton != null) mNextWeekButton.onClick.RemoveListener(下一周);
-            if (mProgramButton != null) mProgramButton.onClick.RemoveListener(投入程序);
-            if (mArtButton != null) mArtButton.onClick.RemoveListener(投入画面);
-            if (mDesignButton != null) mDesignButton.onClick.RemoveListener(投入氛围);
-            if (mTestingButton != null) mTestingButton.onClick.RemoveListener(投入测试);
-            if (mMarketingButton != null) mMarketingButton.onClick.RemoveListener(投入宣传);
-            if (mActionPowerButton != null) mActionPowerButton.onClick.RemoveListener(行动力加一);
-            if (mCoinsButton != null) mCoinsButton.onClick.RemoveListener(金币加一百);
-            if (mBugButton != null) mBugButton.onClick.RemoveListener(Bug加五);
+            if (mStartButton != null) mStartButton.onClick.RemoveListener(StartNewGame);
+            if (mNextStepButton != null) mNextStepButton.onClick.RemoveListener(AdvanceStep);
+            if (mNextWeekButton != null) mNextWeekButton.onClick.RemoveListener(AdvanceWeek);
+            if (mProgramButton != null) mProgramButton.onClick.RemoveListener(AllocateProgram);
+            if (mArtButton != null) mArtButton.onClick.RemoveListener(AllocateArt);
+            if (mDesignButton != null) mDesignButton.onClick.RemoveListener(AllocateDesign);
+            if (mTestingButton != null) mTestingButton.onClick.RemoveListener(AllocateTesting);
+            if (mMarketingButton != null) mMarketingButton.onClick.RemoveListener(AllocateMarketing);
+            if (mActionPowerButton != null) mActionPowerButton.onClick.RemoveListener(AddWeeklyActionPower);
+            if (mCoinsButton != null) mCoinsButton.onClick.RemoveListener(AddCoins);
+            if (mBugButton != null) mBugButton.onClick.RemoveListener(AddBug);
         }
 
         private void EnsureRunner()

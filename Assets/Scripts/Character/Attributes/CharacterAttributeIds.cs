@@ -14,8 +14,8 @@ namespace Anchor.Character.Attributes
         /// <summary>每个月开始时发放的金币数量。</summary>
         public const int MonthlyCoinIncome = 1003;
 
-        /// <summary>每个月结算时使用的基础愿望单增长。</summary>
-        public const int MonthlyWishlistGrowth = 1004;
+        /// <summary>每周结算时使用的基础愿望单增长。</summary>
+        public const int WeeklyWishlistGrowth = 1004;
 
         /// <summary>当前 Bug 值。</summary>
         public const int Bug = 1005;
@@ -34,5 +34,56 @@ namespace Anchor.Character.Attributes
 
         /// <summary>当前质量分。</summary>
         public const int Quality = 1010;
+
+        /// <summary>进入程序房间触发选项时，选择消耗 1 点行动点获得的属性数值。</summary>
+        public const int ProgramRoomOneActionReward = 1011;
+
+        /// <summary>进入程序房间触发选项时，选择消耗 2 点行动点获得的属性数值。</summary>
+        public const int ProgramRoomTwoActionReward = 1012;
+
+        /// <summary>进入美术房间触发选项时，选择消耗 1 点行动点获得的属性数值。</summary>
+        public const int ArtRoomOneActionReward = 1013;
+
+        /// <summary>进入美术房间触发选项时，选择消耗 2 点行动点获得的属性数值。</summary>
+        public const int ArtRoomTwoActionReward = 1014;
+
+        /// <summary>进入音效房间触发选项时，选择消耗 1 点行动点获得的属性数值。</summary>
+        public const int AudioRoomOneActionReward = 1015;
+
+        /// <summary>进入音效房间触发选项时，选择消耗 2 点行动点获得的属性数值。</summary>
+        public const int AudioRoomTwoActionReward = 1016;
+
+        /// <summary>每在程序房间消耗 1 点行动点额外获得的属性数值。</summary>
+        public const int ProgramRoomPerActionReward = 1017;
+
+        /// <summary>每在美术房间消耗 1 点行动点额外获得的属性数值。</summary>
+        public const int ArtRoomPerActionReward = 1018;
+
+        /// <summary>每在音效房间消耗 1 点行动点额外获得的属性数值。</summary>
+        public const int AudioRoomPerActionReward = 1019;
+
+        /// <summary>连续两回合在同一房间消耗行动点时获得的愿望单数量。</summary>
+        public const int SameRoomConsecutiveWishlistReward = 1020;
+
+        /// <summary>每回合开始时，50% 概率获得的愿望单倍率。</summary>
+        public const int WeekStartWishlistChanceMultiplier = 1021;
+
+        /// <summary>第 3、6、9 回合结束时获得的愿望单数量。</summary>
+        public const int MilestoneWeekEndWishlistReward = 1022;
+
+        /// <summary>Bug 低于 40 时，每回合获得的愿望单数量。</summary>
+        public const int LowBugWeeklyWishlistReward = 1023;
+
+        /// <summary>愿望单增长量提高百分比。</summary>
+        public const int WishlistGrowthPercentBonus = 1024;
+
+        /// <summary>每回合结束时画面值高于 60 时，愿望单增长量提高量。</summary>
+        public const int HighVisualWeekEndWishlistGrowthBonus = 1025;
+
+        /// <summary>同一回合在三个房间都消耗行动点时，愿望单增长量提高量。</summary>
+        public const int AllRoomsSameWeekWishlistGrowthBonus = 1026;
+
+        /// <summary>每回合可消费的固定强化费用；为 0 时不弹出选择。</summary>
+        public const int WeeklyFixedUpgradeCost = 1027;
     }
 }
