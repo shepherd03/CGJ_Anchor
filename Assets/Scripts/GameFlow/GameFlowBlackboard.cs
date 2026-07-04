@@ -18,6 +18,7 @@ namespace Anchor.GameFlow
         public int MonthIndex { get; private set; }
         public int WeekIndex { get; private set; }
         public int TotalWeekIndex { get; private set; }
+        public int ConsecutiveWeeksWithoutWeekStartEvent { get; private set; }
         public int RemainingActionPoints => CurrentWeekActionPower;
         public GamePlayer Player { get; } = new();
         public CharacterAttributeSet PlayerAttributes => Player.Attributes;
@@ -28,6 +29,8 @@ namespace Anchor.GameFlow
         public int WeeklyWishlistGrowth => GetInt(CharacterAttributeIds.WeeklyWishlistGrowth);
         public int Coins => GetInt(CharacterAttributeIds.Coins);
         public int WishlistCount => GetInt(CharacterAttributeIds.Wishlist);
+        public int BudgetShopPurchaseCount => GetInt(CharacterAttributeIds.BudgetShopPurchaseCount);
+        public int CurrentBudgetShopPurchaseCount => GetInt(CharacterAttributeIds.CurrentBudgetShopPurchaseCount);
         public int BugScore => PlayerAttributes.Get(CharacterAttributeIds.Bug);
         public int VisualScore => PlayerAttributes.Get(CharacterAttributeIds.Visual);
         public int AtmosphereScore => PlayerAttributes.Get(CharacterAttributeIds.Atmosphere);
@@ -73,6 +76,7 @@ namespace Anchor.GameFlow
             MonthIndex = 0;
             WeekIndex = 0;
             TotalWeekIndex = 0;
+            ConsecutiveWeeksWithoutWeekStartEvent = 0;
             PlayerAttributes.Clear();
             foreach (var row in mAttributeCatalog.RowsById.Values)
             {
@@ -105,6 +109,31 @@ namespace Anchor.GameFlow
             PlayerAttributes.Set(CharacterAttributeIds.WeeklyActionPower, Math.Max(0, BaseWeeklyActionPower));
             RollWeekStartWishlistMultiplier();
             mActionAllocations.Clear();
+        }
+
+        public void ResetBudgetShopPurchaseCount()
+        {
+            PlayerAttributes.Set(
+                CharacterAttributeIds.CurrentBudgetShopPurchaseCount,
+                Math.Max(0, BudgetShopPurchaseCount));
+        }
+
+        public bool HasBudgetShopPurchaseCount()
+        {
+            return CurrentBudgetShopPurchaseCount > 0;
+        }
+
+        public bool TryConsumeBudgetShopPurchaseCount()
+        {
+            if (!HasBudgetShopPurchaseCount())
+            {
+                return false;
+            }
+
+            PlayerAttributes.Set(
+                CharacterAttributeIds.CurrentBudgetShopPurchaseCount,
+                CurrentBudgetShopPurchaseCount - 1);
+            return true;
         }
 
         public bool TryAllocate(GameDevelopmentTrack track, int points)
@@ -214,6 +243,13 @@ namespace Anchor.GameFlow
             {
                 mTriggeredEventIds.Add(eventId);
             }
+        }
+
+        public void RecordWeekStartEventRoll(int eventCount)
+        {
+            ConsecutiveWeeksWithoutWeekStartEvent = eventCount > 0
+                ? 0
+                : ConsecutiveWeeksWithoutWeekStartEvent + 1;
         }
 
         private int GetInt(int attributeId)
@@ -369,6 +405,8 @@ namespace Anchor.GameFlow
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AudioOneActionAtmosphereDeltaMax);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMin);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMax);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.BudgetShopPurchaseCount);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.CurrentBudgetShopPurchaseCount);
         }
     }
 }

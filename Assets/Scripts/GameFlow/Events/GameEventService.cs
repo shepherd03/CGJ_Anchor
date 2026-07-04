@@ -26,12 +26,19 @@ namespace Anchor.GameFlow.Events
     public sealed class GameEventService
     {
         private readonly List<EventRow> mEventRows = new();
+        private readonly List<EventRow> mEligibleWeekEvents = new();
         private readonly List<EventRow> mCurrentWeekEvents = new();
         private readonly ReadOnlyCollection<EventRow> mReadOnlyCurrentWeekEvents;
         private readonly IExtractionRandom mRandom;
+        private readonly GameFlowSettings mDefaultSettings;
         private int mCurrentEventIndex;
 
-        public GameEventService(IEnumerable<EventRow> eventRows, IExtractionRandom random = null)
+        public GameEventService(IEnumerable<EventRow> eventRows, IExtractionRandom random)
+            : this(eventRows, null, random)
+        {
+        }
+
+        public GameEventService(IEnumerable<EventRow> eventRows, GameFlowSettings defaultSettings = null, IExtractionRandom random = null)
         {
             if (eventRows != null)
             {
@@ -45,6 +52,7 @@ namespace Anchor.GameFlow.Events
             }
 
             mRandom = random ?? new SystemExtractionRandom();
+            mDefaultSettings = defaultSettings ?? new GameFlowSettings();
             mReadOnlyCurrentWeekEvents = mCurrentWeekEvents.AsReadOnly();
         }
 
@@ -64,25 +72,36 @@ namespace Anchor.GameFlow.Events
             mCurrentEventIndex = 0;
         }
 
-        public IReadOnlyList<EventRow> RollWeekStartEvents(GameFlowBlackboard blackboard)
+        public IReadOnlyList<EventRow> RollWeekStartEvents(GameFlowBlackboard blackboard, GameFlowSettings settings = null)
         {
             if (blackboard == null)
             {
                 throw new ArgumentNullException(nameof(blackboard));
             }
 
+            settings = settings ?? mDefaultSettings;
             ClearCurrentWeekEvents();
+            mEligibleWeekEvents.Clear();
 
             foreach (var row in mEventRows)
             {
-                if (row.Id <= 0 || !IsTriggerConditionMet(blackboard, row) || !RollRatio(row))
+                if (row.Id <= 0 || !IsTriggerConditionMet(blackboard, row))
                 {
                     continue;
                 }
 
-                mCurrentWeekEvents.Add(row);
+                mEligibleWeekEvents.Add(row);
+
+                if (RollRatio(row))
+                {
+                    mCurrentWeekEvents.Add(row);
+                }
             }
 
+            ApplyPityGuarantee(blackboard, settings);
+            ShuffleCurrentWeekEvents();
+            ApplyWeeklyEventLimit(settings);
+            blackboard.RecordWeekStartEventRoll(mCurrentWeekEvents.Count);
             return CurrentWeekEvents;
         }
 
@@ -152,6 +171,102 @@ namespace Anchor.GameFlow.Events
             }
 
             return roll < row.Ratio;
+        }
+
+        private void ApplyPityGuarantee(GameFlowBlackboard blackboard, GameFlowSettings settings)
+        {
+            if (mCurrentWeekEvents.Count > 0 ||
+                settings.GuaranteedEventAfterEmptyWeeks <= 0 ||
+                blackboard.ConsecutiveWeeksWithoutWeekStartEvent < settings.GuaranteedEventAfterEmptyWeeks)
+            {
+                return;
+            }
+
+            var guaranteedEvent = DrawGuaranteedEvent();
+            if (guaranteedEvent != null)
+            {
+                mCurrentWeekEvents.Add(guaranteedEvent);
+            }
+        }
+
+        private EventRow DrawGuaranteedEvent()
+        {
+            double totalWeight = 0d;
+            for (var i = 0; i < mEligibleWeekEvents.Count; i++)
+            {
+                var row = mEligibleWeekEvents[i];
+                ValidateRatio(row);
+                if (row.Ratio > 0f)
+                {
+                    totalWeight += row.Ratio;
+                }
+            }
+
+            if (totalWeight <= 0d)
+            {
+                return null;
+            }
+
+            var roll = mRandom.NextNormalizedValue();
+            if (float.IsNaN(roll) || float.IsInfinity(roll) || roll < 0f || roll >= 1f)
+            {
+                throw new InvalidOperationException($"Event random source returned {roll}. Expected a finite value in [0, 1).");
+            }
+
+            var remaining = roll * totalWeight;
+            EventRow lastDrawable = null;
+            for (var i = 0; i < mEligibleWeekEvents.Count; i++)
+            {
+                var row = mEligibleWeekEvents[i];
+                if (row.Ratio <= 0f)
+                {
+                    continue;
+                }
+
+                lastDrawable = row;
+                if (remaining < row.Ratio)
+                {
+                    return row;
+                }
+
+                remaining -= row.Ratio;
+            }
+
+            return lastDrawable;
+        }
+
+        private void ShuffleCurrentWeekEvents()
+        {
+            for (var i = mCurrentWeekEvents.Count - 1; i > 0; i--)
+            {
+                var roll = mRandom.NextNormalizedValue();
+                if (float.IsNaN(roll) || float.IsInfinity(roll) || roll < 0f || roll >= 1f)
+                {
+                    throw new InvalidOperationException($"Event random source returned {roll}. Expected a finite value in [0, 1).");
+                }
+
+                var swapIndex = (int)(roll * (i + 1));
+                var temporary = mCurrentWeekEvents[i];
+                mCurrentWeekEvents[i] = mCurrentWeekEvents[swapIndex];
+                mCurrentWeekEvents[swapIndex] = temporary;
+            }
+        }
+
+        private void ApplyWeeklyEventLimit(GameFlowSettings settings)
+        {
+            var maxEvents = Math.Max(0, settings.MaxWeekStartEvents);
+            if (mCurrentWeekEvents.Count > maxEvents)
+            {
+                mCurrentWeekEvents.RemoveRange(maxEvents, mCurrentWeekEvents.Count - maxEvents);
+            }
+        }
+
+        private static void ValidateRatio(EventRow row)
+        {
+            if (float.IsNaN(row.Ratio) || float.IsInfinity(row.Ratio) || row.Ratio < 0f || row.Ratio > 1f)
+            {
+                throw new InvalidOperationException($"Event {row.Id} has invalid ratio: {row.Ratio}.");
+            }
         }
 
         private static bool AreConditionPairsMet(

@@ -27,6 +27,8 @@ namespace Anchor.GameFlow
         [Header("流程")]
         [SerializeField, Min(1)] private int mTotalMonths = 3;
         [SerializeField, Min(1)] private int mWeeksPerMonth = 4;
+        [SerializeField, Min(0)] private int mMaxWeekStartEvents = 2;
+        [SerializeField, Min(0)] private int mGuaranteedEventAfterEmptyWeeks = 1;
 
         private GameFlowController mController;
 
@@ -263,7 +265,9 @@ namespace Anchor.GameFlow
             var settings = new GameFlowSettings
             {
                 TotalMonths = Mathf.Max(1, mTotalMonths),
-                WeeksPerMonth = Mathf.Max(1, mWeeksPerMonth)
+                WeeksPerMonth = Mathf.Max(1, mWeeksPerMonth),
+                MaxWeekStartEvents = Mathf.Max(0, mMaxWeekStartEvents),
+                GuaranteedEventAfterEmptyWeeks = Mathf.Max(0, mGuaranteedEventAfterEmptyWeeks)
             };
 
             var attributeCatalog = new CharacterAttributeCatalog(GameConfigs.Tables.TbplayerAttribute.DataList);
