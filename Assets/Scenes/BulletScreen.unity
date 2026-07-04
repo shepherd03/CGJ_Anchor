@@ -373,12 +373,14 @@ MonoBehaviour:
   bulletPrefab: {fileID: 1837462249130212118, guid: 2dd8957f503444b4bb0c97898b00d4bf, type: 3}
   bulletRoot: {fileID: 0}
   playOnEnable: 1
-  minSpawnInterval: 0.45
-  maxSpawnInterval: 1.2
-  maxActiveBullets: 40
-  verticalPadding: {x: 0, y: 1000}
-  rightSpawnPadding: 720.4
-  leftDespawnPadding: 675.3
+  minSpawnInterval: 0.24
+  maxSpawnInterval: 0.6
+  poolCapacity: 50
+  prewarmPoolOnAwake: 1
+  rootUpDistance: 400
+  rootDownDistance: 400
+  rightSpawnPadding: 200
+  leftDespawnPadding: 200
   widthPadding: 56.2
   bulletContents:
   - "\u8FD9\u6BB5\u6F14\u51FA\u53EF\u4EE5"

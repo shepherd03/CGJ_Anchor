@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// 控制弹幕在 UI 屏幕区域内的生成、移动参数和生命周期。
@@ -25,11 +26,19 @@ public class BulletScreenController : MonoBehaviour
     [SerializeField, Min(0.05f), Tooltip("两条自动弹幕之间的最长间隔。")]
     private float maxSpawnInterval = 1.2f;
 
-    [SerializeField, Min(1), Tooltip("屏幕上最多同时存在的弹幕数量。")]
-    private int maxActiveBullets = 40;
+    [Header("Pool")]
+    [FormerlySerializedAs("maxActiveBullets")]
+    [SerializeField, Min(1), Tooltip("对象池最大实例数量，同时也是屏幕上最多同时存在的弹幕数量。")]
+    private int poolCapacity = 40;
 
-    [SerializeField, Tooltip("Y 轴随机范围的下边距和上边距。")]
-    private Vector2 verticalPadding = new Vector2(48f, 48f);
+    [SerializeField, Tooltip("Awake 时是否提前创建完整对象池，减少运行中 Instantiate。")]
+    private bool prewarmPoolOnAwake = true;
+
+    [SerializeField, Min(0f), Tooltip("以 Root 中心为基准，弹幕 Y 轴向上随机的最大距离。")]
+    private float rootUpDistance = 300f;
+
+    [SerializeField, Min(0f), Tooltip("以 Root 中心为基准，弹幕 Y 轴向下随机的最大距离。")]
+    private float rootDownDistance = 300f;
 
     [SerializeField, Min(0f), Tooltip("弹幕生成时距离右侧屏幕外的额外距离。")]
     private float rightSpawnPadding = 80f;
@@ -69,6 +78,8 @@ public class BulletScreenController : MonoBehaviour
     private bool clearBulletsOnDisable = true;
 
     private readonly List<BulletBugController> activeBullets = new List<BulletBugController>();
+    private readonly List<BulletBugController> pooledInstances = new List<BulletBugController>();
+    private readonly Queue<BulletBugController> availableBullets = new Queue<BulletBugController>();
     private RectTransform cachedRoot;
     private float spawnTimer;
     private bool isSpawning;
@@ -81,12 +92,27 @@ public class BulletScreenController : MonoBehaviour
     public int ActiveBulletCount => activeBullets.Count;
 
     /// <summary>
+    /// 当前对象池中已经创建出的弹幕实例数量。
+    /// </summary>
+    public int PoolInstanceCount => pooledInstances.Count;
+
+    /// <summary>
+    /// 当前对象池中可复用的空闲弹幕数量。
+    /// </summary>
+    public int AvailableBulletCount => availableBullets.Count;
+
+    /// <summary>
     /// 初始化屏幕根节点和自动生成状态。
     /// </summary>
     private void Awake()
     {
         ClampSettings();
         EnsureRoot();
+
+        if (prewarmPoolOnAwake)
+        {
+            PrewarmPool();
+        }
     }
 
     /// <summary>
@@ -147,8 +173,19 @@ public class BulletScreenController : MonoBehaviour
             return null;
         }
 
-        GameObject instance = Instantiate(bulletPrefab, cachedRoot);
-        BulletBugController bullet = GetOrAddBulletController(instance);
+        RemoveDestroyedBullets();
+        if (activeBullets.Count >= poolCapacity)
+        {
+            return null;
+        }
+
+        BulletBugController bullet = RentBullet();
+        if (bullet == null)
+        {
+            return null;
+        }
+
+        bullet.gameObject.SetActive(true);
         string resolvedContent = ResolveBulletContent(content, bullet);
 
         // 先写入文本并刷新布局，再用实际宽度计算屏幕外生成和销毁位置。
@@ -157,7 +194,7 @@ public class BulletScreenController : MonoBehaviour
 
         float bulletWidth = bullet.GetVisualWidth() + widthPadding;
         Vector2 spawnPosition = CreateSpawnPosition(bulletWidth);
-        float despawnX = cachedRoot.rect.xMin - leftDespawnPadding - bulletWidth * 0.5f;
+        float despawnX = -cachedRoot.rect.width * 0.5f - leftDespawnPadding - bulletWidth * 0.5f;
         float moveSpeed = CalculateMoveSpeed(resolvedContent);
 
         bullet.Play(spawnPosition, despawnX, moveSpeed, useUnscaledTime, HandleBulletFinished);
@@ -174,20 +211,33 @@ public class BulletScreenController : MonoBehaviour
     }
 
     /// <summary>
-    /// 清理当前控制器生成并仍在管理中的所有弹幕。
+    /// 清理当前控制器生成并仍在管理中的所有弹幕，实例回收到对象池等待复用。
     /// </summary>
     public void ClearAllBullets()
     {
-        for (int i = activeBullets.Count - 1; i >= 0; i--)
+        while (activeBullets.Count > 0)
         {
-            BulletBugController bullet = activeBullets[i];
-            if (bullet != null)
-            {
-                Destroy(bullet.gameObject);
-            }
+            RecycleBullet(activeBullets[activeBullets.Count - 1]);
+        }
+    }
+
+    /// <summary>
+    /// 按配置补齐对象池，提前创建可复用弹幕实例。
+    /// </summary>
+    public void PrewarmPool()
+    {
+        if (!CanSpawnBullet())
+        {
+            return;
         }
 
-        activeBullets.Clear();
+        RemoveDestroyedBullets();
+
+        while (pooledInstances.Count < poolCapacity)
+        {
+            BulletBugController bullet = CreateBulletInstance();
+            ReturnBulletToPool(bullet);
+        }
     }
 
     /// <summary>
@@ -208,7 +258,7 @@ public class BulletScreenController : MonoBehaviour
             return;
         }
 
-        if (activeBullets.Count < maxActiveBullets)
+        if (activeBullets.Count < poolCapacity)
         {
             SpawnRandomBullet();
         }
@@ -260,6 +310,42 @@ public class BulletScreenController : MonoBehaviour
     }
 
     /// <summary>
+    /// 从对象池取出一条弹幕；池未满时创建新实例，池满时返回 null。
+    /// </summary>
+    private BulletBugController RentBullet()
+    {
+        RemoveDestroyedBullets();
+
+        while (availableBullets.Count > 0)
+        {
+            BulletBugController bullet = availableBullets.Dequeue();
+            if (bullet != null)
+            {
+                return bullet;
+            }
+        }
+
+        if (pooledInstances.Count >= poolCapacity)
+        {
+            return null;
+        }
+
+        return CreateBulletInstance();
+    }
+
+    /// <summary>
+    /// 创建一条新的池内弹幕实例，并默认隐藏等待复用。
+    /// </summary>
+    private BulletBugController CreateBulletInstance()
+    {
+        GameObject instance = Instantiate(bulletPrefab, cachedRoot);
+        BulletBugController controller = GetOrAddBulletController(instance);
+        controller.ResetForPool();
+        pooledInstances.Add(controller);
+        return controller;
+    }
+
+    /// <summary>
     /// 取得或动态补上单条弹幕控制脚本。
     /// </summary>
     private static BulletBugController GetOrAddBulletController(GameObject instance)
@@ -274,23 +360,49 @@ public class BulletScreenController : MonoBehaviour
     }
 
     /// <summary>
-    /// 按屏幕右侧外部位置和随机 Y 轴生成起始坐标。
+    /// 将结束生命周期的弹幕从在屏列表移回对象池。
+    /// </summary>
+    private void RecycleBullet(BulletBugController bullet)
+    {
+        activeBullets.Remove(bullet);
+        ReturnBulletToPool(bullet);
+    }
+
+    /// <summary>
+    /// 隐藏弹幕并放入可复用队列。
+    /// </summary>
+    private void ReturnBulletToPool(BulletBugController bullet)
+    {
+        if (bullet == null)
+        {
+            return;
+        }
+
+        bullet.ResetForPool();
+
+        if (!pooledInstances.Contains(bullet))
+        {
+            if (pooledInstances.Count >= poolCapacity)
+            {
+                return;
+            }
+
+            pooledInstances.Add(bullet);
+        }
+
+        if (!availableBullets.Contains(bullet))
+        {
+            availableBullets.Enqueue(bullet);
+        }
+    }
+
+    /// <summary>
+    /// 按 Root 中心坐标生成右侧屏幕外位置，并在上下距离范围内随机 Y 轴。
     /// </summary>
     private Vector2 CreateSpawnPosition(float bulletWidth)
     {
-        Rect rect = cachedRoot.rect;
-        float minY = rect.yMin + verticalPadding.x;
-        float maxY = rect.yMax - verticalPadding.y;
-
-        if (minY > maxY)
-        {
-            float centerY = rect.center.y;
-            minY = centerY;
-            maxY = centerY;
-        }
-
-        float x = rect.xMax + rightSpawnPadding + bulletWidth * 0.5f;
-        float y = Random.Range(minY, maxY);
+        float x = cachedRoot.rect.width * 0.5f + rightSpawnPadding + bulletWidth * 0.5f;
+        float y = Random.Range(-rootDownDistance, rootUpDistance);
         return new Vector2(x, y);
     }
 
@@ -332,11 +444,11 @@ public class BulletScreenController : MonoBehaviour
     }
 
     /// <summary>
-    /// 单条弹幕生命周期结束时，从管理列表中移除。
+    /// 单条弹幕生命周期结束时，回收到对象池。
     /// </summary>
     private void HandleBulletFinished(BulletBugController bullet)
     {
-        activeBullets.Remove(bullet);
+        RecycleBullet(bullet);
     }
 
     /// <summary>
@@ -344,11 +456,43 @@ public class BulletScreenController : MonoBehaviour
     /// </summary>
     private void RemoveDestroyedBullets()
     {
+        bool hasDestroyedPooledInstance = false;
+
         for (int i = activeBullets.Count - 1; i >= 0; i--)
         {
             if (activeBullets[i] == null)
             {
                 activeBullets.RemoveAt(i);
+            }
+        }
+
+        for (int i = pooledInstances.Count - 1; i >= 0; i--)
+        {
+            if (pooledInstances[i] == null)
+            {
+                pooledInstances.RemoveAt(i);
+                hasDestroyedPooledInstance = true;
+            }
+        }
+
+        if (hasDestroyedPooledInstance)
+        {
+            RebuildAvailableQueue();
+        }
+    }
+
+    /// <summary>
+    /// 外部销毁池对象后，重建可复用队列，避免队列里残留空引用。
+    /// </summary>
+    private void RebuildAvailableQueue()
+    {
+        int count = availableBullets.Count;
+        for (int i = 0; i < count; i++)
+        {
+            BulletBugController bullet = availableBullets.Dequeue();
+            if (bullet != null && pooledInstances.Contains(bullet))
+            {
+                availableBullets.Enqueue(bullet);
             }
         }
     }
@@ -368,9 +512,9 @@ public class BulletScreenController : MonoBehaviour
     {
         minSpawnInterval = Mathf.Max(0.05f, minSpawnInterval);
         maxSpawnInterval = Mathf.Max(minSpawnInterval, maxSpawnInterval);
-        maxActiveBullets = Mathf.Max(1, maxActiveBullets);
-        verticalPadding.x = Mathf.Max(0f, verticalPadding.x);
-        verticalPadding.y = Mathf.Max(0f, verticalPadding.y);
+        poolCapacity = Mathf.Max(1, poolCapacity);
+        rootUpDistance = Mathf.Max(0f, rootUpDistance);
+        rootDownDistance = Mathf.Max(0f, rootDownDistance);
         rightSpawnPadding = Mathf.Max(0f, rightSpawnPadding);
         leftDespawnPadding = Mathf.Max(0f, leftDespawnPadding);
         widthPadding = Mathf.Max(0f, widthPadding);

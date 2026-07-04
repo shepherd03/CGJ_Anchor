@@ -120,7 +120,7 @@ public class BulletBugController : MonoBehaviour
     }
 
     /// <summary>
-    /// 立即结束当前弹幕并销毁自身物体。
+    /// 立即结束当前弹幕，并交给屏幕控制器回收。
     /// </summary>
     public void Finish()
     {
@@ -132,8 +132,26 @@ public class BulletBugController : MonoBehaviour
         isPlaying = false;
         Action<BulletBugController> callback = onFinished;
         onFinished = null;
-        callback?.Invoke(this);
-        Destroy(gameObject);
+
+        if (callback != null)
+        {
+            callback.Invoke(this);
+            return;
+        }
+
+        gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// 重置运行状态并隐藏自身，等待对象池下次复用。
+    /// </summary>
+    public void ResetForPool()
+    {
+        isPlaying = false;
+        moveSpeed = 0f;
+        despawnX = 0f;
+        onFinished = null;
+        gameObject.SetActive(false);
     }
 
     /// <summary>
