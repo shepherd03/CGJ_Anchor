@@ -369,6 +369,9 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void HideImmediate()
         {
+            CacheReferences();
+            EnsureAuthoredLayoutCaptured();
+
             if (canvasGroup != null)
             {
                 canvasGroup.alpha = 0f;
@@ -378,6 +381,7 @@ namespace Anchor.UI.Panel
 
             if (panelRoot != null)
             {
+                // 编排器可能在 inactive 面板 Awake 前调用 Close，必须先捕获布局再回写缩放。
                 panelRoot.localScale = authoredScale;
             }
 
@@ -429,8 +433,24 @@ namespace Anchor.UI.Panel
         private void CaptureAuthoredLayout()
         {
             authoredScale = panelRoot != null ? panelRoot.localScale : Vector3.one;
+            if (IsZeroScale(authoredScale))
+            {
+                // 防止运行时误把未初始化或已被隐藏逻辑污染的零缩放继续作为弹窗动画基准。
+                authoredScale = Vector3.one;
+            }
+
             authoredIdlePosition = idle != null ? idle.anchoredPosition : Vector2.zero;
             hasCapturedAuthoredLayout = true;
+        }
+
+        /// <summary>
+        /// 判断缩放是否已经退化到不可见状态。
+        /// </summary>
+        private static bool IsZeroScale(Vector3 scale)
+        {
+            return Mathf.Approximately(scale.x, 0f)
+                || Mathf.Approximately(scale.y, 0f)
+                || Mathf.Approximately(scale.z, 0f);
         }
 
         /// <summary>
