@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace Anchor.UI.Panel
 {
     [DisallowMultipleComponent]
-    public sealed class WindowShopPanelManager : MonoBehaviour
+    public sealed class WindowShopPanelManager : PanelManagerSingleton<WindowShopPanelManager>
     {
         [Header("Buff Window")]
         [SerializeField, Tooltip("BuffWindow 上的下落回弹动画组件。为空时会从当前物体或子物体查找。")]

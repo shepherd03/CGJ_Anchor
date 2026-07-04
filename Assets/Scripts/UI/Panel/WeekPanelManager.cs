@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace Anchor.UI.Panel
 {
     [DisallowMultipleComponent]
-    public sealed class WeekPanelManager : MonoBehaviour
+    public sealed class WeekPanelManager : PanelManagerSingleton<WeekPanelManager>
     {
         [Header("Button")]
         [SerializeField, Tooltip("点击后关闭当前 WeekPanel 的按钮。")]

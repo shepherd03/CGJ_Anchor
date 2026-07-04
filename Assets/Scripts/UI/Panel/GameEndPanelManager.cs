@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace Anchor.UI.Panel
 {
     [DisallowMultipleComponent]
-    public sealed class GameEndPanelManager : MonoBehaviour
+    public sealed class GameEndPanelManager : PanelManagerSingleton<GameEndPanelManager>
     {
         [Header("Button")]
         [SerializeField, Tooltip("点击后关闭当前 GameEndPanel 的按钮。")]

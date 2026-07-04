@@ -12,22 +12,6 @@ namespace Anchor.UI.Panel
         /// </summary>
         public static GameFlowPanelCoordinator Instance { get; private set; }
 
-        [Header("Panels")]
-        [SerializeField, Tooltip("开始页面。为空时会从场景中查找。")]
-        private BeginPanelManager beginPanelManager;
-
-        [SerializeField, Tooltip("月初 BuffWindow 页面。为空时会从场景中查找。")]
-        private WindowShopPanelManager windowShopPanelManager;
-
-        [SerializeField, Tooltip("主操作页面。为空时会从场景中查找。")]
-        private MainPanelManager mainPanelManager;
-
-        [SerializeField, Tooltip("周结算页面。为空时会从场景中查找。")]
-        private WeekPanelManager weekPanelManager;
-
-        [SerializeField, Tooltip("游戏结束页面。为空时会从场景中查找。")]
-        private GameEndPanelManager gameEndPanelManager;
-
         [Header("Bullet Screen")]
         [SerializeField, Tooltip("月结算弹幕屏幕控制器。为空时会从场景中查找。")]
         private BulletScreenController bulletScreenController;
@@ -265,7 +249,7 @@ namespace Anchor.UI.Panel
         /// </summary>
         private IEnumerator OpenWeekPanelAndWaitForClose()
         {
-            EnsureWeekPanelManager();
+            WeekPanelManager weekPanelManager = WeekPanelManager.Instance;
 
             if (weekPanelManager == null)
             {
@@ -338,7 +322,7 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void CloseBeginPanel()
         {
-            EnsureBeginPanelManager();
+            BeginPanelManager beginPanelManager = BeginPanelManager.Instance;
 
             if (beginPanelManager != null)
             {
@@ -351,7 +335,7 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void OpenBuffWindow()
         {
-            EnsureWindowShopPanelManager();
+            WindowShopPanelManager windowShopPanelManager = WindowShopPanelManager.Instance;
 
             if (windowShopPanelManager == null)
             {
@@ -367,7 +351,7 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void CloseBuffWindow()
         {
-            EnsureWindowShopPanelManager();
+            WindowShopPanelManager windowShopPanelManager = WindowShopPanelManager.Instance;
 
             if (windowShopPanelManager != null)
             {
@@ -380,7 +364,7 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void OpenMainPanel()
         {
-            EnsureMainPanelManager();
+            MainPanelManager mainPanelManager = MainPanelManager.Instance;
 
             if (mainPanelManager == null)
             {
@@ -396,7 +380,7 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void CloseMainPanel()
         {
-            EnsureMainPanelManager();
+            MainPanelManager mainPanelManager = MainPanelManager.Instance;
 
             if (mainPanelManager != null)
             {
@@ -409,7 +393,7 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void CloseWeekPanel()
         {
-            EnsureWeekPanelManager();
+            WeekPanelManager weekPanelManager = WeekPanelManager.Instance;
 
             if (weekPanelManager != null)
             {
@@ -422,7 +406,7 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void OpenGameEndPanel()
         {
-            EnsureGameEndPanelManager();
+            GameEndPanelManager gameEndPanelManager = GameEndPanelManager.Instance;
 
             if (gameEndPanelManager == null)
             {
@@ -438,7 +422,7 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void CloseGameEndPanel()
         {
-            EnsureGameEndPanelManager();
+            GameEndPanelManager gameEndPanelManager = GameEndPanelManager.Instance;
 
             if (gameEndPanelManager != null)
             {
@@ -460,61 +444,6 @@ namespace Anchor.UI.Panel
 
             Debug.LogWarning($"{nameof(GameFlowPanelCoordinator)} cannot find {nameof(GameFlowRunner)} instance.", this);
             return false;
-        }
-
-        /// <summary>
-        /// 查找并缓存开始页面。
-        /// </summary>
-        private void EnsureBeginPanelManager()
-        {
-            if (beginPanelManager == null)
-            {
-                beginPanelManager = FindObjectOfType<BeginPanelManager>(true);
-            }
-        }
-
-        /// <summary>
-        /// 查找并缓存月初 BuffWindow 页面。
-        /// </summary>
-        private void EnsureWindowShopPanelManager()
-        {
-            if (windowShopPanelManager == null)
-            {
-                windowShopPanelManager = FindObjectOfType<WindowShopPanelManager>(true);
-            }
-        }
-
-        /// <summary>
-        /// 查找并缓存主操作页面。
-        /// </summary>
-        private void EnsureMainPanelManager()
-        {
-            if (mainPanelManager == null)
-            {
-                mainPanelManager = FindObjectOfType<MainPanelManager>(true);
-            }
-        }
-
-        /// <summary>
-        /// 查找并缓存周结算页面。
-        /// </summary>
-        private void EnsureWeekPanelManager()
-        {
-            if (weekPanelManager == null)
-            {
-                weekPanelManager = FindObjectOfType<WeekPanelManager>(true);
-            }
-        }
-
-        /// <summary>
-        /// 查找并缓存游戏结束页面。
-        /// </summary>
-        private void EnsureGameEndPanelManager()
-        {
-            if (gameEndPanelManager == null)
-            {
-                gameEndPanelManager = FindObjectOfType<GameEndPanelManager>(true);
-            }
         }
 
         /// <summary>

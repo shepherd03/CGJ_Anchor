@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace Anchor.UI.Panel
 {
     [DisallowMultipleComponent]
-    public sealed class MainPanelManager : MonoBehaviour
+    public sealed class MainPanelManager : PanelManagerSingleton<MainPanelManager>
     {
         [Header("Status Text")]
         [SerializeField, Tooltip("显示 Gold 数值的 TextMeshProUGUI。")]
