@@ -12,8 +12,12 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("点击后结束本周行动并关闭 MainPanel 的按钮。")]
         private Button nextWeekButton;
 
+        [Header("Week Settlement")]
+        [SerializeField, Tooltip("周结算展示面板。为空时会从场景中查找。")]
+        private WeekPanelManager weekPanelManager;
+
         [Header("Bullet Screen")]
-        [SerializeField, Tooltip("周结算和月结算时播放的弹幕屏幕控制器。为空时会从场景中查找。")]
+        [SerializeField, Tooltip("月结算时播放的弹幕屏幕控制器。为空时会从场景中查找。")]
         private BulletScreenController bulletScreenController;
 
         private const float BulletScreenDuration = 4f;
@@ -67,7 +71,7 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 点击下一周按钮后结束本周行动，隐藏当前 MainPanel，并播放弹幕后推进流程。
+        /// 点击下一周按钮后结束本周行动，隐藏当前 MainPanel，并进入周结算展示。
         /// </summary>
         private void OnNextWeekButtonClicked()
         {
@@ -92,33 +96,35 @@ namespace Anchor.UI.Panel
 
             gameFlowRunner.FinishWeekAction();
             Close();
-            flowAdvanceCoroutine = gameFlowRunner.StartCoroutine(AdvanceFlowAfterBulletScreen());
+            flowAdvanceCoroutine = gameFlowRunner.StartCoroutine(AdvanceFlowAfterWeekResolve());
         }
 
         /// <summary>
-        /// 播放弹幕 4 秒后继续流程，并根据新状态打开对应 UI。
+        /// 处理周结算展示，然后根据后续状态打开对应 UI。
         /// </summary>
-        private IEnumerator AdvanceFlowAfterBulletScreen()
+        private IEnumerator AdvanceFlowAfterWeekResolve()
         {
             isAdvancingFlow = true;
 
-            yield return PlayBulletScreenForDuration();
-            gameFlowRunner.ContinueFlow();
-            yield return RouteFlowAfterContinue();
+            yield return RouteFlowAfterCurrentState();
 
             flowAdvanceCoroutine = null;
             isAdvancingFlow = false;
         }
 
         /// <summary>
-        /// 按当前流程状态决定下一步 UI；月结算会再播放一轮弹幕后继续到月初商店。
+        /// 按当前流程状态决定下一步 UI；周结算打开 WeekPanel，月结算才播放弹幕。
         /// </summary>
-        private IEnumerator RouteFlowAfterContinue()
+        private IEnumerator RouteFlowAfterCurrentState()
         {
             while (gameFlowRunner != null && gameFlowRunner.Controller != null)
             {
                 switch (gameFlowRunner.Controller.CurrentState)
                 {
+                    case GameFlowState.WeekResolve:
+                        yield return OpenWeekPanelAndWaitForClose();
+                        gameFlowRunner.ContinueFlow();
+                        break;
                     case GameFlowState.WeekAction:
                         Open();
                         yield break;
@@ -134,6 +140,27 @@ namespace Anchor.UI.Panel
                     default:
                         yield break;
                 }
+            }
+        }
+
+        /// <summary>
+        /// 打开周结算面板，并等待玩家点击关闭。
+        /// </summary>
+        private IEnumerator OpenWeekPanelAndWaitForClose()
+        {
+            EnsureWeekPanelManager();
+
+            if (weekPanelManager == null)
+            {
+                Debug.LogWarning($"{nameof(MainPanelManager)} cannot find {nameof(WeekPanelManager)} in the scene.", this);
+                yield break;
+            }
+
+            weekPanelManager.Open();
+
+            while (weekPanelManager != null && weekPanelManager.gameObject.activeSelf)
+            {
+                yield return null;
             }
         }
 
@@ -241,6 +268,17 @@ namespace Anchor.UI.Panel
             if (gameFlowRunner == null)
             {
                 gameFlowRunner = FindObjectOfType<GameFlowRunner>();
+            }
+        }
+
+        /// <summary>
+        /// 查找并缓存场景中的周结算面板，包含初始未激活的面板。
+        /// </summary>
+        private void EnsureWeekPanelManager()
+        {
+            if (weekPanelManager == null)
+            {
+                weekPanelManager = FindObjectOfType<WeekPanelManager>(true);
             }
         }
 
