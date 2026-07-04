@@ -1,0 +1,115 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &3985592562544028923
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5216744738459656853}
+  - component: {fileID: 8149707313376329395}
+  - component: {fileID: 4178879377500701447}
+  - component: {fileID: 764040836552313745}
+  m_Layer: 5
+  m_Name: BulletScreen
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &5216744738459656853
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3985592562544028923}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &8149707313376329395
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3985592562544028923}
+  m_CullTransparentMesh: 1
+--- !u!114 &4178879377500701447
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3985592562544028923}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 0, g: 0, b: 0, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!114 &764040836552313745
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3985592562544028923}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9f3a6aecd2ec4ca9b93444c63544727, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bulletPrefab: {fileID: 1837462249130212118, guid: 2dd8957f503444b4bb0c97898b00d4bf, type: 3}
+  bulletRoot: {fileID: 0}
+  playOnEnable: 1
+  minSpawnInterval: 0.24
+  maxSpawnInterval: 0.6
+  poolCapacity: 50
+  prewarmPoolOnAwake: 1
+  rootUpDistance: 400
+  rootDownDistance: 400
+  upperHalfSpawnChance: 0.7
+  rightSpawnPadding: 200
+  leftDespawnPadding: 200
+  widthPadding: 56.2
+  bulletContents:
+  - "\u8FD9\u6BB5\u6F14\u51FA\u53EF\u4EE5"
+  - "\u524D\u65B9\u9AD8\u80FD"
+  - "\u7B11\u6B7B"
+  - "\u8FD9\u4E2A\u8282\u594F\u5BF9\u4E86"
+  - "\u522B\u6321\u5B57\u5E55"
+  - "\u8FD9\u53E5\u592A\u957F\u4F1A\u98D8\u5F97\u66F4\u5FEB\u4E00\u70B9"
+  minMoveSpeed: 120
+  speedPerCharacter: 8
+  maxMoveSpeed: 360
+  useUnscaledTime: 1
+  clearBulletsOnDisable: 1

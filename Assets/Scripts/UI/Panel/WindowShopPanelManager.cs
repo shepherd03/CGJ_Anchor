@@ -15,6 +15,8 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("点击后关闭当前 BuffWindow 的按钮。")]
         private Button closeButton;
 
+        private MainPanelManager mainPanelManager;
+
         /// <summary>
         /// Panel 启用时注册关闭按钮点击事件。
         /// </summary>
@@ -80,7 +82,44 @@ namespace Anchor.UI.Panel
             }
 
             closeButton.onClick.RemoveListener(Close);
-            closeButton.onClick.AddListener(Close);
+            closeButton.onClick.RemoveListener(OnCloseButtonClicked);
+            closeButton.onClick.AddListener(OnCloseButtonClicked);
+        }
+
+        /// <summary>
+        /// 点击关闭按钮后关闭 BuffWindow，并打开 MainPanel。
+        /// </summary>
+        private void OnCloseButtonClicked()
+        {
+            Close();
+            OpenMainPanel();
+        }
+
+        /// <summary>
+        /// 打开 MainPanel。
+        /// </summary>
+        private void OpenMainPanel()
+        {
+            EnsureMainPanelManager();
+
+            if (mainPanelManager == null)
+            {
+                Debug.LogWarning($"{nameof(WindowShopPanelManager)} cannot find {nameof(MainPanelManager)} in the scene.", this);
+                return;
+            }
+
+            mainPanelManager.Open();
+        }
+
+        /// <summary>
+        /// 查找并缓存场景中的 MainPanel 管理器，包含初始未激活的面板。
+        /// </summary>
+        private void EnsureMainPanelManager()
+        {
+            if (mainPanelManager == null)
+            {
+                mainPanelManager = FindObjectOfType<MainPanelManager>(true);
+            }
         }
 
         /// <summary>
@@ -94,6 +133,7 @@ namespace Anchor.UI.Panel
             }
 
             closeButton.onClick.RemoveListener(Close);
+            closeButton.onClick.RemoveListener(OnCloseButtonClicked);
         }
 
         /// <summary>
