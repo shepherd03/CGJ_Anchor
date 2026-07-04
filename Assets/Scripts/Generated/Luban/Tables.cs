@@ -14,16 +14,22 @@ namespace Anchor.Config
 public partial class Tables
 {
     public demo.Tbitem Tbitem {get; }
+    public game.Tbbuff Tbbuff {get; }
+    public game.TbgameEvent TbgameEvent {get; }
 
     public Tables(System.Func<string, ByteBuf> loader)
     {
         Tbitem = new demo.Tbitem(loader("demo_tbitem"));
+        Tbbuff = new game.Tbbuff(loader("game_tbbuff"));
+        TbgameEvent = new game.TbgameEvent(loader("game_tbgameevent"));
         ResolveRef();
     }
     
     private void ResolveRef()
     {
         Tbitem.ResolveRef(this);
+        Tbbuff.ResolveRef(this);
+        TbgameEvent.ResolveRef(this);
     }
 }
 

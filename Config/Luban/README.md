@@ -28,6 +28,18 @@
 
 ## 常用命令
 
+在本目录可以直接双击：
+
+```bat
+export_tables.cmd
+```
+
+或在 PowerShell 执行：
+
+```powershell
+.\export_tables.ps1
+```
+
 在仓库根目录执行：
 
 ```powershell
