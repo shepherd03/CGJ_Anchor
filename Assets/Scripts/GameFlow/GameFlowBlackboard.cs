@@ -29,6 +29,12 @@ namespace Anchor.GameFlow
         public int WeeklyWishlistGrowth => GetInt(CharacterAttributeIds.WeeklyWishlistGrowth);
         public int Coins => GetInt(CharacterAttributeIds.Coins);
         public int WishlistCount => GetInt(CharacterAttributeIds.Wishlist);
+        public int BaseProgramRoomOperationCount => GetInt(CharacterAttributeIds.BaseProgramRoomOperationCount);
+        public int ProgramRoomOperationCount => GetInt(CharacterAttributeIds.ProgramRoomOperationCount);
+        public int BaseArtRoomOperationCount => GetInt(CharacterAttributeIds.BaseArtRoomOperationCount);
+        public int ArtRoomOperationCount => GetInt(CharacterAttributeIds.ArtRoomOperationCount);
+        public int BaseAudioRoomOperationCount => GetInt(CharacterAttributeIds.BaseAudioRoomOperationCount);
+        public int AudioRoomOperationCount => GetInt(CharacterAttributeIds.AudioRoomOperationCount);
         public int BudgetShopPurchaseCount => GetInt(CharacterAttributeIds.BudgetShopPurchaseCount);
         public int CurrentBudgetShopPurchaseCount => GetInt(CharacterAttributeIds.CurrentBudgetShopPurchaseCount);
         public int BugScore => PlayerAttributes.Get(CharacterAttributeIds.Bug);
@@ -56,6 +62,9 @@ namespace Anchor.GameFlow
         public int WeeklyBugDelta => GetInt(CharacterAttributeIds.WeeklyBugDelta);
         public int WeeklyVisualDelta => GetInt(CharacterAttributeIds.WeeklyVisualDelta);
         public int WeeklyAtmosphereDelta => GetInt(CharacterAttributeIds.WeeklyAtmosphereDelta);
+        public int WeeklyProgramActionBugDelta => GetInt(CharacterAttributeIds.WeeklyProgramActionBugDelta);
+        public int WeeklyArtActionVisualDelta => GetInt(CharacterAttributeIds.WeeklyArtActionVisualDelta);
+        public int WeeklyAudioActionAtmosphereDelta => GetInt(CharacterAttributeIds.WeeklyAudioActionAtmosphereDelta);
         public MonthDefinition CurrentMonth { get; private set; }
         public WeekResolveResult LastWeekResult { get; private set; }
         public MonthSettlementResult LastMonthResult { get; private set; }
@@ -107,6 +116,7 @@ namespace Anchor.GameFlow
             WeekIndex++;
             TotalWeekIndex++;
             PlayerAttributes.Set(CharacterAttributeIds.WeeklyActionPower, Math.Max(0, BaseWeeklyActionPower));
+            ResetWeeklyRoomOperationCounts();
             RollWeekStartWishlistMultiplier();
             mActionAllocations.Clear();
         }
@@ -149,11 +159,22 @@ namespace Anchor.GameFlow
                 return false;
             }
 
+            if (!HasRoomOperationCount(track))
+            {
+                return false;
+            }
+
+            ConsumeRoomOperationCount(track);
             PlayerAttributes.Set(CharacterAttributeIds.WeeklyActionPower, RemainingActionPoints - points);
             mActionAllocations.TryGetValue(track, out var current);
             mActionAllocations[track] = current + points;
             ApplyRoomActionReward(track, points);
             return true;
+        }
+
+        public bool HasRoomOperationCount(GameDevelopmentTrack track)
+        {
+            return GetRoomOperationCount(track) > 0;
         }
 
         public void ApplyWeekResult(WeekResolveResult result)
@@ -171,6 +192,7 @@ namespace Anchor.GameFlow
             }
 
             RecordResolvedWeekSpentTracks();
+            ClearWeeklyActionDeltas();
         }
 
         public void ApplyMonthSettlement(MonthSettlementResult result)
@@ -222,19 +244,31 @@ namespace Anchor.GameFlow
 
         public bool CanReadAttribute(int attributeId)
         {
-            return attributeId == CharacterAttributeIds.Quality || mAttributeCatalog.Contains(attributeId);
+            return IsReadonlyFlowAttribute(attributeId)
+                || attributeId == CharacterAttributeIds.Quality
+                || mAttributeCatalog.Contains(attributeId);
         }
 
         public bool CanWriteAttribute(int attributeId)
         {
-            return attributeId != CharacterAttributeIds.Quality && mAttributeCatalog.Contains(attributeId);
+            return !IsReadonlyFlowAttribute(attributeId)
+                && attributeId != CharacterAttributeIds.Quality
+                && mAttributeCatalog.Contains(attributeId);
         }
 
         public int GetAttributeValue(int attributeId)
         {
-            return attributeId == CharacterAttributeIds.Quality
-                ? QualityScore
-                : PlayerAttributes.Get(attributeId);
+            switch (attributeId)
+            {
+                case CharacterAttributeIds.Quality:
+                    return QualityScore;
+                case CharacterAttributeIds.CurrentMonthWeekIndex:
+                    return WeekIndex;
+                case CharacterAttributeIds.TotalWeekIndex:
+                    return TotalWeekIndex;
+                default:
+                    return PlayerAttributes.Get(attributeId);
+            }
         }
 
         public void RecordTriggeredEvent(int eventId)
@@ -255,6 +289,54 @@ namespace Anchor.GameFlow
         private int GetInt(int attributeId)
         {
             return (int)PlayerAttributes.Get(attributeId);
+        }
+
+        private void ResetWeeklyRoomOperationCounts()
+        {
+            PlayerAttributes.Set(
+                CharacterAttributeIds.ProgramRoomOperationCount,
+                Math.Max(0, BaseProgramRoomOperationCount));
+            PlayerAttributes.Set(
+                CharacterAttributeIds.ArtRoomOperationCount,
+                Math.Max(0, BaseArtRoomOperationCount));
+            PlayerAttributes.Set(
+                CharacterAttributeIds.AudioRoomOperationCount,
+                Math.Max(0, BaseAudioRoomOperationCount));
+        }
+
+        private int GetRoomOperationCount(GameDevelopmentTrack track)
+        {
+            return track switch
+            {
+                GameDevelopmentTrack.Program => ProgramRoomOperationCount,
+                GameDevelopmentTrack.Art => ArtRoomOperationCount,
+                GameDevelopmentTrack.Audio => AudioRoomOperationCount,
+                _ => 0
+            };
+        }
+
+        private void ConsumeRoomOperationCount(GameDevelopmentTrack track)
+        {
+            var attributeId = track switch
+            {
+                GameDevelopmentTrack.Program => CharacterAttributeIds.ProgramRoomOperationCount,
+                GameDevelopmentTrack.Art => CharacterAttributeIds.ArtRoomOperationCount,
+                GameDevelopmentTrack.Audio => CharacterAttributeIds.AudioRoomOperationCount,
+                _ => 0
+            };
+
+            if (attributeId > 0)
+            {
+                PlayerAttributes.Set(attributeId, Math.Max(0, PlayerAttributes.Get(attributeId) - 1));
+            }
+        }
+
+        private static bool IsReadonlyFlowAttribute(int attributeId)
+        {
+            // These values mirror flow progress for table conditions.
+            // They must not be written by events or buffs, otherwise the timeline can desync.
+            return attributeId == CharacterAttributeIds.CurrentMonthWeekIndex
+                || attributeId == CharacterAttributeIds.TotalWeekIndex;
         }
 
         public static int CalculateBaseQualityScore(int visualScore, int atmosphereScore)
@@ -301,6 +383,7 @@ namespace Anchor.GameFlow
                         CharacterAttributeIds.ProgramOneActionBugDeltaMax,
                         CharacterAttributeIds.ProgramTwoActionBugDeltaMin,
                         CharacterAttributeIds.ProgramTwoActionBugDeltaMax));
+                    AddClamped(CharacterAttributeIds.Bug, WeeklyProgramActionBugDelta * points);
                     AddRoomWishlistReward(points, ProgramRoomOneActionWishlistReward, ProgramRoomTwoActionWishlistReward, ProgramRoomPerActionWishlistReward);
                     break;
                 case GameDevelopmentTrack.Art:
@@ -310,6 +393,7 @@ namespace Anchor.GameFlow
                         CharacterAttributeIds.ArtOneActionVisualDeltaMax,
                         CharacterAttributeIds.ArtTwoActionVisualDeltaMin,
                         CharacterAttributeIds.ArtTwoActionVisualDeltaMax));
+                    PlayerAttributes.Add(CharacterAttributeIds.Visual, WeeklyArtActionVisualDelta * points);
                     AddRoomWishlistReward(points, ArtRoomOneActionWishlistReward, ArtRoomTwoActionWishlistReward, ArtRoomPerActionWishlistReward);
                     break;
                 case GameDevelopmentTrack.Audio:
@@ -319,6 +403,7 @@ namespace Anchor.GameFlow
                         CharacterAttributeIds.AudioOneActionAtmosphereDeltaMax,
                         CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMin,
                         CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMax));
+                    PlayerAttributes.Add(CharacterAttributeIds.Atmosphere, WeeklyAudioActionAtmosphereDelta * points);
                     AddRoomWishlistReward(points, AudioRoomOneActionWishlistReward, AudioRoomTwoActionWishlistReward, AudioRoomPerActionWishlistReward);
                     break;
                 default:
@@ -363,6 +448,15 @@ namespace Anchor.GameFlow
             PlayerAttributes.Set(attributeId, Math.Max(0, PlayerAttributes.Get(attributeId) + delta));
         }
 
+        private void ClearWeeklyActionDeltas()
+        {
+            // These are temporary knobs for the current week's AP usage.
+            // They are cleared after week resolution so shop buffs and week events can both affect the upcoming AP spend.
+            PlayerAttributes.Set(CharacterAttributeIds.WeeklyProgramActionBugDelta, 0);
+            PlayerAttributes.Set(CharacterAttributeIds.WeeklyArtActionVisualDelta, 0);
+            PlayerAttributes.Set(CharacterAttributeIds.WeeklyAudioActionAtmosphereDelta, 0);
+        }
+
         private void RequireCoreAttributes()
         {
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.BaseWeeklyActionPower);
@@ -374,6 +468,12 @@ namespace Anchor.GameFlow
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Atmosphere);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Coins);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Wishlist);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.BaseProgramRoomOperationCount);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramRoomOperationCount);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.BaseArtRoomOperationCount);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ArtRoomOperationCount);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.BaseAudioRoomOperationCount);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AudioRoomOperationCount);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramRoomOneActionReward);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramRoomTwoActionReward);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ArtRoomOneActionReward);
@@ -407,6 +507,9 @@ namespace Anchor.GameFlow
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMax);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.BudgetShopPurchaseCount);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.CurrentBudgetShopPurchaseCount);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyProgramActionBugDelta);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyArtActionVisualDelta);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyAudioActionAtmosphereDelta);
         }
     }
 }

@@ -425,12 +425,39 @@ public sealed class FloatingUIManager : MonoBehaviour
             return;
         }
 
+        if (TryGetGameFlowRunner(out GameFlowRunner runner) &&
+            HasRemainingRoomOperationCount(runner, type))
+        {
+            return;
+        }
+
         CacheMissingButtonPrefabSpawner();
 
         if (buttonPrefabSpawner != null)
         {
             buttonPrefabSpawner.LockForCurrentWeek();
         }
+    }
+
+    /// <summary>
+    /// 当前 Type 对应的房间本周还有剩余操作次数时，入口不锁定。
+    /// </summary>
+    private static bool HasRemainingRoomOperationCount(GameFlowRunner runner, RoomActionPointType actionPointType)
+    {
+        if (runner == null || runner.Controller == null)
+        {
+            return false;
+        }
+
+        var track = actionPointType switch
+        {
+            RoomActionPointType.Code => GameDevelopmentTrack.Program,
+            RoomActionPointType.Art => GameDevelopmentTrack.Art,
+            RoomActionPointType.Audio => GameDevelopmentTrack.Audio,
+            _ => GameDevelopmentTrack.Audio
+        };
+
+        return runner.Controller.Blackboard.HasRoomOperationCount(track);
     }
 
     /// <summary>
