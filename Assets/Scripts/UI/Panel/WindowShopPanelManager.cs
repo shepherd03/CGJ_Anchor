@@ -32,6 +32,20 @@ namespace Anchor.UI.Panel
         // 当前由面板动态生成的 BuffCard，用于重新注入数据时清理旧实例。
         private readonly List<BuffCardController> generatedBuffCards = new List<BuffCardController>();
 
+        // Buff 图标所在的 Resources 多 Sprite 图片路径，路径不包含文件扩展名。
+        private static readonly string[] BuffSpriteSheetResourcePaths =
+        {
+            "Sprites/shopping1",
+            "Sprites/shopping2",
+            "Sprites/shopping3",
+        };
+
+        // 以 BuffRow.Title 为 key 缓存所有可用 Buff 图标，避免每次刷新商品重复读 Resources。
+        private static readonly Dictionary<string, Sprite> buffSpritesByTitle = new Dictionary<string, Sprite>();
+
+        // 标记 Buff 图标缓存是否已经构建过。
+        private static bool buffSpriteCacheBuilt;
+
         /// <summary>
         /// Panel 启用时注册关闭按钮点击事件。
         /// </summary>
@@ -139,7 +153,7 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 接收流程层刷新出的 Buff 候选数据，并用 Buff 标题刷新 BuffCard 文本。
+        /// 接收流程层刷新出的 Buff 候选数据，并用 Buff 标题刷新 BuffCard 文本和图标。
         /// </summary>
         private void OnBudgetShopBuffOffersRefreshed(BudgetShopBuffOffersRefreshedEvent flowEvent)
         {
@@ -296,13 +310,16 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 生成单个 BuffCard，并用 Buff 表里的 Title 填充卡片文本。
+        /// 生成单个 BuffCard，并用 Buff 表里的 Title 填充卡片文本和图标。
         /// </summary>
         private void CreateBuffCard(BuffRow buffRow, int index)
         {
             BuffCardController buffCard = Instantiate(buffCardPrefab, buffCardRoot);
+            string buffTitle = GetBuffTitle(buffRow);
+            Sprite buffIcon = LoadBuffIconByTitle(buffTitle);
+
             buffCard.name = $"{buffCardPrefab.name}_{index + 1}";
-            buffCard.InjectData(GetBuffTitle(buffRow));
+            buffCard.InjectData(buffTitle, buffIcon);
             generatedBuffCards.Add(buffCard);
         }
 
@@ -312,6 +329,76 @@ namespace Anchor.UI.Panel
         private static string GetBuffTitle(BuffRow buffRow)
         {
             return buffRow?.Title ?? string.Empty;
+        }
+
+        /// <summary>
+        /// 通过 Buff 标题加载对应图标；标题对应的是多 Sprite 图片里的子 Sprite 名称。
+        /// </summary>
+        private static Sprite LoadBuffIconByTitle(string buffTitle)
+        {
+            if (string.IsNullOrWhiteSpace(buffTitle))
+            {
+                return null;
+            }
+
+            EnsureBuffSpriteCache();
+
+            if (buffSpritesByTitle.TryGetValue(buffTitle, out Sprite icon))
+            {
+                return icon;
+            }
+
+            Debug.LogWarning($"{nameof(WindowShopPanelManager)} cannot find Buff icon sprite: {buffTitle}.");
+            return null;
+        }
+
+        /// <summary>
+        /// 从 Resources 下的三张多 Sprite 商品图集中建立标题到 Sprite 的查找缓存。
+        /// </summary>
+        private static void EnsureBuffSpriteCache()
+        {
+            if (buffSpriteCacheBuilt)
+            {
+                return;
+            }
+
+            buffSpritesByTitle.Clear();
+            for (int i = 0; i < BuffSpriteSheetResourcePaths.Length; i++)
+            {
+                CacheBuffSpritesFromSheet(BuffSpriteSheetResourcePaths[i]);
+            }
+
+            buffSpriteCacheBuilt = true;
+        }
+
+        /// <summary>
+        /// 读取单张多 Sprite 商品图集，并将其中的子 Sprite 名称登记为 Buff 标题 key。
+        /// </summary>
+        private static void CacheBuffSpritesFromSheet(string resourcePath)
+        {
+            Sprite[] sprites = Resources.LoadAll<Sprite>(resourcePath);
+            if (sprites == null || sprites.Length == 0)
+            {
+                Debug.LogWarning($"{nameof(WindowShopPanelManager)} cannot load Buff sprite sheet: Resources/{resourcePath}.");
+                return;
+            }
+
+            for (int i = 0; i < sprites.Length; i++)
+            {
+                Sprite sprite = sprites[i];
+                if (sprite == null || string.IsNullOrWhiteSpace(sprite.name))
+                {
+                    continue;
+                }
+
+                if (buffSpritesByTitle.ContainsKey(sprite.name))
+                {
+                    Debug.LogWarning($"{nameof(WindowShopPanelManager)} found duplicate Buff sprite name: {sprite.name}. First sprite is kept.");
+                    continue;
+                }
+
+                buffSpritesByTitle.Add(sprite.name, sprite);
+            }
         }
 
         /// <summary>
