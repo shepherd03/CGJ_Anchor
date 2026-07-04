@@ -170,17 +170,33 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
     [SerializeField] private Vector3 baseScale = Vector3.one;
     [SerializeField] private FloatStates scaleStates = new FloatStates();
     [SerializeField] private TransitionSettings transitions = new TransitionSettings();
+    [SerializeField] private bool syncBaseScaleFromCurrentBeforeHover = true;
+
+    [Header("Sprite Background")]
+    [SerializeField] private bool disableBrightShadowEffectsWhenSpritePresent = true;
+    [SerializeField] private bool preserveSpriteOriginalColor = true;
+    [SerializeField, Range(0f, 1f)] private float brightShadowLuminanceThreshold = 0.6f;
+    [SerializeField, Range(0f, 1f)] private float brightShadowAlphaThreshold = 0.1f;
 
     private Button button;
     private RectTransform rectTransform;
+    private BaseMeshEffect[] backgroundEffects;
+    private bool[] authoredBackgroundEffectStates;
+    private ScreenSpaceEdgeFlame flameEffect;
     private bool isPointerInside;
     private bool isPointerDown;
     private Sequence releaseSequence;
     private Tween scaleTween;
+    private Sprite authoredBackgroundSprite;
+    private Sprite authoredFrameOverlaySprite;
+    private Sprite authoredHoverOverlaySprite;
+    private Sprite authoredPressOverlaySprite;
+    private Sprite authoredReleaseOverlaySprite;
 
     private void Reset()
     {
         CacheReferences();
+        CaptureAuthoredSprites();
         CaptureCurrentScaleAsBase();
         ApplyImmediate(VisualState.Normal);
     }
@@ -188,12 +204,15 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
     private void Awake()
     {
         CacheReferences();
+        CaptureAuthoredSprites();
+        CaptureCurrentScaleAsBase();
         ApplyImmediate(GetRestingState());
     }
 
     private void OnEnable()
     {
         CacheReferences();
+        CaptureAuthoredSprites();
         ApplyImmediate(GetRestingState());
     }
 
@@ -207,10 +226,9 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
     private void OnValidate()
     {
         CacheReferences();
+        CaptureAuthoredSprites();
+        CaptureCurrentScaleAsBase();
         ClampTransitions();
-
-        if (baseScale == Vector3.zero)
-            CaptureCurrentScaleAsBase();
 
         if (!Application.isPlaying)
             ApplyImmediate(GetRestingState());
@@ -223,6 +241,11 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
         if (!CanInteract())
             return;
 
+        SyncBaseScaleFromCurrentIfNeeded();
+
+        if (flameEffect != null)
+            flameEffect.SetHoverState(true);
+
         if (!isPointerDown)
             TransitionTo(VisualState.Hover);
     }
@@ -233,6 +256,9 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
 
         if (!CanInteract())
             return;
+
+        if (flameEffect != null)
+            flameEffect.SetHoverState(false);
 
         if (!isPointerDown)
             TransitionTo(VisualState.Normal);
@@ -275,6 +301,17 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
             baseScale = rectTransform.localScale;
     }
 
+    public void SyncBaseScaleFromCurrentIfNeeded()
+    {
+        if (!syncBaseScaleFromCurrentBeforeHover || rectTransform == null)
+            return;
+
+        // Hover should grow from the card's current authored/runtime size,
+        // not from an outdated serialized baseScale captured in another scene.
+        if ((rectTransform.localScale - baseScale).sqrMagnitude > 0.0001f)
+            baseScale = rectTransform.localScale;
+    }
+
     private void CacheReferences()
     {
         if (button == null)
@@ -285,6 +322,23 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
 
         if (backgroundSlot == null)
             backgroundSlot = GetComponent<Image>();
+
+        if (backgroundSlot != null)
+            backgroundEffects = backgroundSlot.GetComponents<BaseMeshEffect>();
+        bool needsEffectStateCapture = backgroundEffects != null
+            && (authoredBackgroundEffectStates == null || authoredBackgroundEffectStates.Length != backgroundEffects.Length);
+
+        if (needsEffectStateCapture)
+            authoredBackgroundEffectStates = new bool[backgroundEffects.Length];
+
+        if (backgroundEffects != null && (needsEffectStateCapture || !Application.isPlaying))
+        {
+            for (int i = 0; i < backgroundEffects.Length; i++)
+                authoredBackgroundEffectStates[i] = backgroundEffects[i] != null && backgroundEffects[i].enabled;
+        }
+
+        if (flameEffect == null)
+            flameEffect = GetComponent<ScreenSpaceEdgeFlame>();
 
         if (frameOverlaySlot == null)
             frameOverlaySlot = FindChildImage("FrameOverlaySlot");
@@ -314,6 +368,15 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
     {
         Transform child = transform.Find(childName);
         return child != null ? child.GetComponent<Image>() : null;
+    }
+
+    private void CaptureAuthoredSprites()
+    {
+        authoredBackgroundSprite = backgroundSlot != null ? backgroundSlot.sprite : null;
+        authoredFrameOverlaySprite = frameOverlaySlot != null ? frameOverlaySlot.sprite : null;
+        authoredHoverOverlaySprite = hoverOverlaySlot != null ? hoverOverlaySlot.sprite : null;
+        authoredPressOverlaySprite = pressOverlaySlot != null ? pressOverlaySlot.sprite : null;
+        authoredReleaseOverlaySprite = releaseOverlaySlot != null ? releaseOverlaySlot.sprite : null;
     }
 
     private void ClampTransitions()
@@ -391,22 +454,86 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
         if (target == null)
             return;
 
-        target.sprite = sprite;
-        target.preserveAspect = sprite != null;
+        Sprite resolvedSprite = ResolveSprite(target, sprite);
+        Color resolvedColor = ResolveColor(target, resolvedSprite, color);
+        target.sprite = resolvedSprite;
+        target.preserveAspect = resolvedSprite != null;
         target.raycastTarget = target == backgroundSlot;
 
-        bool shouldShow = sprite != null || color.a > 0.001f || target == backgroundSlot;
+        bool shouldShow = resolvedSprite != null || color.a > 0.001f || target == backgroundSlot;
         target.enabled = shouldShow;
+
+        if (target == backgroundSlot)
+            UpdateBackgroundEffects(resolvedSprite);
 
         if (animated && Application.isPlaying)
         {
             target.DOKill();
-            target.DOColor(color, transitions.colorDuration).SetEase(transitions.ease).SetTarget(target);
+            target.DOColor(resolvedColor, transitions.colorDuration).SetEase(transitions.ease).SetTarget(target);
         }
         else
         {
-            target.color = color;
+            target.color = resolvedColor;
         }
+    }
+
+    private Sprite ResolveSprite(Image target, Sprite sprite)
+    {
+        if (sprite != null)
+            return sprite;
+
+        if (target == backgroundSlot)
+            return authoredBackgroundSprite;
+
+        if (target == frameOverlaySlot)
+            return authoredFrameOverlaySprite;
+
+        if (target == hoverOverlaySlot)
+            return authoredHoverOverlaySprite;
+
+        if (target == pressOverlaySlot)
+            return authoredPressOverlaySprite;
+
+        if (target == releaseOverlaySlot)
+            return authoredReleaseOverlaySprite;
+
+        return target.sprite;
+    }
+
+    private Color ResolveColor(Image target, Sprite resolvedSprite, Color color)
+    {
+        if (target == backgroundSlot && resolvedSprite != null && preserveSpriteOriginalColor)
+            return new Color(1f, 1f, 1f, color.a);
+
+        return color;
+    }
+
+    private void UpdateBackgroundEffects(Sprite resolvedSprite)
+    {
+        if (backgroundEffects == null)
+            return;
+
+        for (int i = 0; i < backgroundEffects.Length; i++)
+        {
+            BaseMeshEffect effect = backgroundEffects[i];
+            if (effect != null)
+                effect.enabled = ShouldDisableEffectForSprite(effect, resolvedSprite)
+                    ? false
+                    : authoredBackgroundEffectStates != null && i < authoredBackgroundEffectStates.Length && authoredBackgroundEffectStates[i];
+        }
+    }
+
+    private bool ShouldDisableEffectForSprite(BaseMeshEffect effect, Sprite resolvedSprite)
+    {
+        if (resolvedSprite == null || !disableBrightShadowEffectsWhenSpritePresent || effect == null)
+            return false;
+
+        if (!(effect is Shadow shadow))
+            return false;
+
+        Color color = shadow.effectColor;
+        float luminance = color.r * 0.2126f + color.g * 0.7152f + color.b * 0.0722f;
+        return color.a >= brightShadowAlphaThreshold && luminance >= brightShadowLuminanceThreshold;
     }
 
     private void ApplyFallbackFrameState(VisualState state, bool animated)

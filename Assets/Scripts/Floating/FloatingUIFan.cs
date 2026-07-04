@@ -44,6 +44,7 @@ public sealed class FloatingUIFan : MonoBehaviour
     [SerializeField] private float floatSpeed = 0.625f;
     [SerializeField] private float floatDelayStep = 0.18f;
     [SerializeField] private Ease floatEase = Ease.InOutSine;
+    [SerializeField] private bool snapCardPositionToPixelGrid = true;
 
     private RectTransform[] cards;
     private CanvasGroup[] cardCanvasGroups;
@@ -51,6 +52,8 @@ public sealed class FloatingUIFan : MonoBehaviour
     private Sequence transitionSequence;
 
     public bool IsOpen { get; private set; }
+    public int SpreadSign => spreadDirection == SpreadDirection.Right ? 1 : -1;
+    public Vector2 SpreadBaseDirection => spreadDirection == SpreadDirection.Right ? Vector2.right : Vector2.left;
 
     /// <summary>
     /// 当前是否正在播放打开或关闭过渡动画。
@@ -132,7 +135,7 @@ public sealed class FloatingUIFan : MonoBehaviour
             canvasGroup.blocksRaycasts = false;
 
             float delay = i * stagger;
-            transitionSequence.Insert(delay, card.DOAnchorPos(targetLayout.Position, openDuration).SetEase(moveEase));
+            transitionSequence.Insert(delay, card.DOAnchorPos(targetLayout.Position, openDuration, snapCardPositionToPixelGrid).SetEase(moveEase));
             transitionSequence.Insert(delay, card.DOLocalRotate(new Vector3(0f, 0f, targetLayout.RotationZ), openDuration).SetEase(rotateEase));
             transitionSequence.Insert(delay, card.DOScale(targetLayout.Scale, openDuration * 0.85f).SetEase(scaleEase));
             transitionSequence.Insert(delay, canvasGroup.DOFade(1f, fadeInDuration).SetEase(Ease.OutQuad));
@@ -145,6 +148,9 @@ public sealed class FloatingUIFan : MonoBehaviour
 
             for (int i = 0; i < cards.Length; i++)
             {
+                if (cards[i] != null && cards[i].TryGetComponent(out FloatingUIButtonVisual visual))
+                    visual.CaptureCurrentScaleAsBase();
+
                 if (cardCanvasGroups[i] != null)
                 {
                     cardCanvasGroups[i].interactable = true;
@@ -196,7 +202,7 @@ public sealed class FloatingUIFan : MonoBehaviour
             canvasGroup.blocksRaycasts = false;
 
             float delay = (cards.Length - 1 - i) * closeStagger;
-            transitionSequence.Insert(delay, card.DOAnchorPos(expandOrigin, closeDuration).SetEase(closeEase));
+            transitionSequence.Insert(delay, card.DOAnchorPos(expandOrigin, closeDuration, snapCardPositionToPixelGrid).SetEase(closeEase));
             transitionSequence.Insert(delay, card.DOLocalRotate(Vector3.zero, closeDuration).SetEase(closeEase));
             transitionSequence.Insert(delay, card.DOScale(Vector3.one * collapsedScale, closeDuration).SetEase(closeEase));
             transitionSequence.Insert(delay, canvasGroup.DOFade(0f, closeDuration * 0.8f).SetEase(Ease.InQuad));
@@ -242,7 +248,7 @@ public sealed class FloatingUIFan : MonoBehaviour
         float halfCycleDuration = Mathf.Max(0.01f, 0.5f / floatSpeed);
 
         card
-            .DOAnchorPosY(targetLayout.Position.y + floatAmplitude, halfCycleDuration)
+            .DOAnchorPosY(targetLayout.Position.y + floatAmplitude, halfCycleDuration, snapCardPositionToPixelGrid)
             .SetDelay(index * floatDelayStep)
             .SetEase(floatEase)
             .SetLoops(-1, LoopType.Yoyo)
