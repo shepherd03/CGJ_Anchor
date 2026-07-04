@@ -140,6 +140,18 @@ namespace Anchor.GameFlow.Buffs
                 return false;
             }
 
+            if (!blackboard.HasBudgetShopPurchaseCount())
+            {
+                result = BuffPurchaseResult.Fail(
+                    BuffPurchaseStatus.NoRemainingPurchaseCount,
+                    buff.Id,
+                    mCostAttributeId,
+                    buff.Cost,
+                    $"No remaining budget shop purchase count for buff {buff.Id}.",
+                    buff);
+                return false;
+            }
+
             if (!CanPay(blackboard, buff))
             {
                 result = BuffPurchaseResult.Fail(
@@ -165,6 +177,7 @@ namespace Anchor.GameFlow.Buffs
             }
 
             blackboard.PlayerAttributes.Add(mCostAttributeId, -buff.Cost);
+            blackboard.TryConsumeBudgetShopPurchaseCount();
             ApplyEffects(blackboard, buff);
             blackboard.AddActiveBuff(buff.Id);
             mCurrentOffers.Remove(buff);
@@ -179,6 +192,7 @@ namespace Anchor.GameFlow.Buffs
                 && buff.Id > 0
                 && buff.Weight > 0
                 && !blackboard.HasActiveBuff(buff.Id)
+                && blackboard.HasBudgetShopPurchaseCount()
                 && CanPay(blackboard, buff)
                 && TryValidateEffects(blackboard, buff, out _);
         }

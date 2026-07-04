@@ -127,5 +127,11 @@ namespace Anchor.Character.Attributes
 
         /// <summary>音效房间消耗 2 点行动点时，氛围变化随机上限。</summary>
         public const int AudioTwoActionAtmosphereDeltaMax = 1042;
+
+        /// <summary>每次进入商店时可购买 Buff 的次数。</summary>
+        public const int BudgetShopPurchaseCount = 1049;
+
+        /// <summary>当前商店阶段剩余可购买 Buff 的次数。</summary>
+        public const int CurrentBudgetShopPurchaseCount = 1050;
     }
 }

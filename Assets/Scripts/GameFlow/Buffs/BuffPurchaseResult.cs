@@ -11,7 +11,8 @@ namespace Anchor.GameFlow.Buffs
         AlreadyActive = 4,
         CannotAfford = 5,
         InvalidBuff = 6,
-        InvalidEffects = 7
+        InvalidEffects = 7,
+        NoRemainingPurchaseCount = 8
     }
 
     public readonly struct BuffPurchaseResult
