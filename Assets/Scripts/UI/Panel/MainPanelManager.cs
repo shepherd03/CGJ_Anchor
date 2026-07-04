@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,6 +7,19 @@ namespace Anchor.UI.Panel
     [DisallowMultipleComponent]
     public sealed class MainPanelManager : MonoBehaviour
     {
+        [Header("Status Text")]
+        [SerializeField, Tooltip("显示 Gold 数值的 TextMeshProUGUI。")]
+        private TextMeshProUGUI goldText;
+
+        [SerializeField, Tooltip("显示 Bug 数值的 TextMeshProUGUI。")]
+        private TextMeshProUGUI bugText;
+
+        [SerializeField, Tooltip("显示 View 数值的 TextMeshProUGUI。")]
+        private TextMeshProUGUI viewText;
+
+        [SerializeField, Tooltip("显示 Audio 数值的 TextMeshProUGUI。")]
+        private TextMeshProUGUI audioText;
+
         [Header("Button")]
         [SerializeField, Tooltip("点击后结束本周行动并关闭 MainPanel 的按钮。")]
         private Button nextWeekButton;
