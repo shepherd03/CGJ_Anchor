@@ -2,9 +2,11 @@ using System.Collections.Generic;
 using Anchor.GameFlow.States;
 using Anchor.Character.Attributes;
 using Anchor.GameFlow.Buffs;
+using Anchor.GameFlow.Events;
 using YokiFrame;
 
 using BuffRow = Anchor.Config.game.buff;
+using EventRow = Anchor.Config.game.gameEvent;
 
 namespace Anchor.GameFlow
 {
@@ -18,7 +20,8 @@ namespace Anchor.GameFlow
             CharacterAttributeCatalog attributeCatalog,
             GameFlowSettings settings = null,
             bool autoAdvanceInteractiveStates = false,
-            IEnumerable<BuffRow> buffRows = null)
+            IEnumerable<BuffRow> buffRows = null,
+            IEnumerable<EventRow> eventRows = null)
         {
             Settings = settings ?? new GameFlowSettings();
             AutoAdvanceInteractiveStates = autoAdvanceInteractiveStates;
@@ -26,12 +29,14 @@ namespace Anchor.GameFlow
             Definitions = new GameFlowDefinitionProvider(Settings);
             ResolveService = new GameFlowResolveService();
             BuffShop = new BuffShopService(buffRows);
+            GameEvents = new GameEventService(eventRows);
             mFsm = new FSM<GameFlowState>("GameFlowFSM");
 
             mFsm.Add(GameFlowState.NewGame, new NewGameState(mFsm, Blackboard, this));
             mFsm.Add(GameFlowState.MonthStart, new MonthStartState(mFsm, Blackboard, this));
             mFsm.Add(GameFlowState.BudgetShop, new BudgetShopState(mFsm, Blackboard, this));
             mFsm.Add(GameFlowState.WeekStart, new WeekStartState(mFsm, Blackboard, this));
+            mFsm.Add(GameFlowState.WeekEvent, new WeekEventState(mFsm, Blackboard, this));
             mFsm.Add(GameFlowState.WeekAction, new WeekActionState(mFsm, Blackboard, this));
             mFsm.Add(GameFlowState.WeekResolve, new WeekResolveState(mFsm, Blackboard, this));
             mFsm.Add(GameFlowState.MonthSettlement, new MonthSettlementState(mFsm, Blackboard, this));
@@ -43,10 +48,14 @@ namespace Anchor.GameFlow
         public GameFlowDefinitionProvider Definitions { get; }
         public GameFlowResolveService ResolveService { get; }
         public BuffShopService BuffShop { get; }
+        public GameEventService GameEvents { get; }
         public bool AutoAdvanceInteractiveStates { get; }
         public GameFlowState CurrentState => mFsm.CurEnum;
         public MachineState MachineState => mFsm.MachineState;
         public IReadOnlyList<BuffRow> CurrentBudgetShopBuffOffers => BuffShop.CurrentOffers;
+        public IReadOnlyList<EventRow> CurrentWeekGameEvents => GameEvents.CurrentWeekEvents;
+        public EventRow CurrentWeekGameEvent => GameEvents.CurrentEvent;
+        public bool HasPendingWeekGameEvent => GameEvents.HasPendingEvent;
 
         public void StartNewGame()
         {
@@ -55,6 +64,7 @@ namespace Anchor.GameFlow
                 mFsm.End();
             }
 
+            GameEvents.ClearCurrentWeekEvents();
             mFsm.Start(GameFlowState.NewGame);
         }
 
@@ -71,6 +81,11 @@ namespace Anchor.GameFlow
         public void ConfirmBudgetShop()
         {
             mFsm.SendMessage(new ConfirmBudgetShopMessage());
+        }
+
+        public IReadOnlyList<EventRow> RollWeekStartGameEvents()
+        {
+            return GameEvents.RollWeekStartEvents(Blackboard);
         }
 
         public IReadOnlyList<BuffRow> RefreshBudgetShopBuffOffers(int count = DefaultBudgetShopBuffOfferCount)
@@ -155,6 +170,27 @@ namespace Anchor.GameFlow
             mFsm.SendMessage(new FinishWeekActionMessage());
         }
 
+        public bool ChooseWeekGameEvent(bool chooseYes)
+        {
+            if (CurrentState != GameFlowState.WeekEvent || !HasPendingWeekGameEvent)
+            {
+                return false;
+            }
+
+            mFsm.SendMessage(new ResolveWeekGameEventMessage(chooseYes));
+            return true;
+        }
+
+        public bool ChooseWeekGameEventYes()
+        {
+            return ChooseWeekGameEvent(true);
+        }
+
+        public bool ChooseWeekGameEventNo()
+        {
+            return ChooseWeekGameEvent(false);
+        }
+
         public void Continue()
         {
             mFsm.SendMessage(new ContinueFlowMessage());
@@ -168,6 +204,31 @@ namespace Anchor.GameFlow
         internal void NotifyWeekResolved(WeekResolveResult result)
         {
             EventKit.Type.Send(new WeekResolvedEvent(Blackboard, result));
+        }
+
+        internal void NotifyWeekGameEventTriggered(EventRow eventRow)
+        {
+            EventKit.Type.Send(new WeekGameEventTriggeredEvent(
+                Blackboard,
+                eventRow,
+                GameEvents.PendingEventCount,
+                GameEvents.CurrentWeekEvents.Count));
+        }
+
+        internal bool TryResolveCurrentWeekGameEvent(bool chooseYes, out GameEventResolveResult result)
+        {
+            if (!GameEvents.TryResolveCurrentEvent(Blackboard, chooseYes, out result))
+            {
+                return false;
+            }
+
+            NotifyWeekGameEventResolved(result);
+            return true;
+        }
+
+        internal void NotifyWeekGameEventResolved(GameEventResolveResult result)
+        {
+            EventKit.Type.Send(new WeekGameEventResolvedEvent(Blackboard, result));
         }
 
         internal void NotifyMonthSettled(MonthSettlementResult result)

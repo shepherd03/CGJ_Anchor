@@ -12,6 +12,8 @@ namespace Anchor.GameFlow
         private readonly List<int> mTriggeredEventIds = new();
         private readonly CharacterAttributeCatalog mAttributeCatalog;
         private readonly Random mRandom = new();
+        private readonly HashSet<GameDevelopmentTrack> mPreviousWeekSpentTracks = new();
+        private float mCurrentWeekWishlistMultiplier = 1f;
 
         public int MonthIndex { get; private set; }
         public int WeekIndex { get; private set; }
@@ -30,6 +32,18 @@ namespace Anchor.GameFlow
         public int BugScore => PlayerAttributes.Get(CharacterAttributeIds.Bug);
         public int VisualScore => PlayerAttributes.Get(CharacterAttributeIds.Visual);
         public int AtmosphereScore => PlayerAttributes.Get(CharacterAttributeIds.Atmosphere);
+        public int ProgramRoomOneActionWishlistReward => GetInt(CharacterAttributeIds.ProgramRoomOneActionReward);
+        public int ProgramRoomTwoActionWishlistReward => GetInt(CharacterAttributeIds.ProgramRoomTwoActionReward);
+        public int ArtRoomOneActionWishlistReward => GetInt(CharacterAttributeIds.ArtRoomOneActionReward);
+        public int ArtRoomTwoActionWishlistReward => GetInt(CharacterAttributeIds.ArtRoomTwoActionReward);
+        public int AudioRoomOneActionWishlistReward => GetInt(CharacterAttributeIds.AudioRoomOneActionReward);
+        public int AudioRoomTwoActionWishlistReward => GetInt(CharacterAttributeIds.AudioRoomTwoActionReward);
+        public int ProgramRoomPerActionWishlistReward => GetInt(CharacterAttributeIds.ProgramRoomPerActionReward);
+        public int ArtRoomPerActionWishlistReward => GetInt(CharacterAttributeIds.ArtRoomPerActionReward);
+        public int AudioRoomPerActionWishlistReward => GetInt(CharacterAttributeIds.AudioRoomPerActionReward);
+        public int SameRoomConsecutiveWishlistReward => GetInt(CharacterAttributeIds.SameRoomConsecutiveWishlistReward);
+        public int WeekStartWishlistChanceMultiplier => GetInt(CharacterAttributeIds.WeekStartWishlistChanceMultiplier);
+        public float CurrentWeekWishlistMultiplier => mCurrentWeekWishlistMultiplier;
         public int MilestoneWeekEndWishlistReward => GetInt(CharacterAttributeIds.MilestoneWeekEndWishlistReward);
         public int LowBugWeeklyWishlistReward => GetInt(CharacterAttributeIds.LowBugWeeklyWishlistReward);
         public int WishlistGrowthPercentBonus => GetInt(CharacterAttributeIds.WishlistGrowthPercentBonus);
@@ -71,6 +85,8 @@ namespace Anchor.GameFlow
             mActionAllocations.Clear();
             mActiveBuffIds.Clear();
             mTriggeredEventIds.Clear();
+            mPreviousWeekSpentTracks.Clear();
+            mCurrentWeekWishlistMultiplier = 1f;
         }
 
         public void BeginMonth(MonthDefinition definition)
@@ -86,6 +102,7 @@ namespace Anchor.GameFlow
             WeekIndex++;
             TotalWeekIndex++;
             PlayerAttributes.Set(CharacterAttributeIds.WeeklyActionPower, Math.Max(0, BaseWeeklyActionPower));
+            RollWeekStartWishlistMultiplier();
             mActionAllocations.Clear();
         }
 
@@ -123,6 +140,8 @@ namespace Anchor.GameFlow
             {
                 mTriggeredEventIds.Add(result.EventId);
             }
+
+            RecordResolvedWeekSpentTracks();
         }
 
         public void ApplyMonthSettlement(MonthSettlementResult result)
@@ -144,6 +163,19 @@ namespace Anchor.GameFlow
             return mActionAllocations.TryGetValue(track, out var points) ? points : 0;
         }
 
+        public bool HasAnySameRoomSpentAsPreviousWeek()
+        {
+            foreach (var allocation in mActionAllocations)
+            {
+                if (allocation.Value > 0 && mPreviousWeekSpentTracks.Contains(allocation.Key))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public bool HasActiveBuff(int buffId)
         {
             return mActiveBuffIds.Contains(buffId);
@@ -160,9 +192,37 @@ namespace Anchor.GameFlow
             return true;
         }
 
+        public void RecordTriggeredEvent(int eventId)
+        {
+            if (eventId > 0)
+            {
+                mTriggeredEventIds.Add(eventId);
+            }
+        }
+
         private int GetInt(int attributeId)
         {
             return (int)PlayerAttributes.Get(attributeId);
+        }
+
+        private void RollWeekStartWishlistMultiplier()
+        {
+            var percentBonus = WeekStartWishlistChanceMultiplier;
+            mCurrentWeekWishlistMultiplier = percentBonus > 0 && mRandom.NextDouble() < 0.5d
+                ? 1f + percentBonus / 100f
+                : 1f;
+        }
+
+        private void RecordResolvedWeekSpentTracks()
+        {
+            mPreviousWeekSpentTracks.Clear();
+            foreach (var allocation in mActionAllocations)
+            {
+                if (allocation.Value > 0)
+                {
+                    mPreviousWeekSpentTracks.Add(allocation.Key);
+                }
+            }
         }
 
         private void ApplyRoomActionReward(GameDevelopmentTrack track, int points)
@@ -176,6 +236,7 @@ namespace Anchor.GameFlow
                         CharacterAttributeIds.ProgramOneActionBugDeltaMax,
                         CharacterAttributeIds.ProgramTwoActionBugDeltaMin,
                         CharacterAttributeIds.ProgramTwoActionBugDeltaMax));
+                    AddRoomWishlistReward(points, ProgramRoomOneActionWishlistReward, ProgramRoomTwoActionWishlistReward, ProgramRoomPerActionWishlistReward);
                     break;
                 case GameDevelopmentTrack.Art:
                     PlayerAttributes.Add(CharacterAttributeIds.Visual, GetRoomActionDelta(
@@ -184,6 +245,7 @@ namespace Anchor.GameFlow
                         CharacterAttributeIds.ArtOneActionVisualDeltaMax,
                         CharacterAttributeIds.ArtTwoActionVisualDeltaMin,
                         CharacterAttributeIds.ArtTwoActionVisualDeltaMax));
+                    AddRoomWishlistReward(points, ArtRoomOneActionWishlistReward, ArtRoomTwoActionWishlistReward, ArtRoomPerActionWishlistReward);
                     break;
                 case GameDevelopmentTrack.Audio:
                     PlayerAttributes.Add(CharacterAttributeIds.Atmosphere, GetRoomActionDelta(
@@ -192,6 +254,7 @@ namespace Anchor.GameFlow
                         CharacterAttributeIds.AudioOneActionAtmosphereDeltaMax,
                         CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMin,
                         CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMax));
+                    AddRoomWishlistReward(points, AudioRoomOneActionWishlistReward, AudioRoomTwoActionWishlistReward, AudioRoomPerActionWishlistReward);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(track), track, null);
@@ -208,6 +271,16 @@ namespace Anchor.GameFlow
             return points == 1
                 ? GetRandomInclusive(GetInt(onePointMinId), GetInt(onePointMaxId))
                 : GetRandomInclusive(GetInt(twoPointMinId), GetInt(twoPointMaxId));
+        }
+
+        private void AddRoomWishlistReward(int points, int onePointReward, int twoPointReward, int perPointReward)
+        {
+            var tierReward = points == 1 ? onePointReward : twoPointReward;
+            var reward = tierReward + perPointReward * points;
+            if (reward != 0)
+            {
+                AddClamped(CharacterAttributeIds.Wishlist, reward);
+            }
         }
 
         private int GetRandomInclusive(int minValue, int maxValue)
@@ -237,6 +310,17 @@ namespace Anchor.GameFlow
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Coins);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Wishlist);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Quality);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramRoomOneActionReward);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramRoomTwoActionReward);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ArtRoomOneActionReward);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ArtRoomTwoActionReward);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AudioRoomOneActionReward);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AudioRoomTwoActionReward);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramRoomPerActionReward);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ArtRoomPerActionReward);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AudioRoomPerActionReward);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.SameRoomConsecutiveWishlistReward);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeekStartWishlistChanceMultiplier);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.MilestoneWeekEndWishlistReward);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.LowBugWeeklyWishlistReward);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WishlistGrowthPercentBonus);

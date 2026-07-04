@@ -20,6 +20,16 @@ namespace Anchor.GameFlow
     {
     }
 
+    internal readonly struct ResolveWeekGameEventMessage
+    {
+        public readonly bool ChooseYes;
+
+        public ResolveWeekGameEventMessage(bool chooseYes)
+        {
+            ChooseYes = chooseYes;
+        }
+    }
+
     internal readonly struct ContinueFlowMessage
     {
     }

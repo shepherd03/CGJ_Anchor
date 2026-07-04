@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using Anchor.GameFlow.Buffs;
+using Anchor.GameFlow.Events;
 
 using BuffRow = Anchor.Config.game.buff;
+using EventRow = Anchor.Config.game.gameEvent;
 
 namespace Anchor.GameFlow
 {
@@ -23,6 +25,38 @@ namespace Anchor.GameFlow
         public readonly WeekResolveResult Result;
 
         public WeekResolvedEvent(GameFlowBlackboard blackboard, WeekResolveResult result)
+        {
+            Blackboard = blackboard;
+            Result = result;
+        }
+    }
+
+    public readonly struct WeekGameEventTriggeredEvent
+    {
+        public readonly GameFlowBlackboard Blackboard;
+        public readonly EventRow Event;
+        public readonly int PendingEventCount;
+        public readonly int TotalEventCount;
+
+        public WeekGameEventTriggeredEvent(
+            GameFlowBlackboard blackboard,
+            EventRow eventRow,
+            int pendingEventCount,
+            int totalEventCount)
+        {
+            Blackboard = blackboard;
+            Event = eventRow;
+            PendingEventCount = pendingEventCount;
+            TotalEventCount = totalEventCount;
+        }
+    }
+
+    public readonly struct WeekGameEventResolvedEvent
+    {
+        public readonly GameFlowBlackboard Blackboard;
+        public readonly GameEventResolveResult Result;
+
+        public WeekGameEventResolvedEvent(GameFlowBlackboard blackboard, GameEventResolveResult result)
         {
             Blackboard = blackboard;
             Result = result;

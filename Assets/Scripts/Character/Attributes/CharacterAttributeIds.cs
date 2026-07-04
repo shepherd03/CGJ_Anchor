@@ -35,37 +35,37 @@ namespace Anchor.Character.Attributes
         /// <summary>当前质量分。</summary>
         public const int Quality = 1010;
 
-        /// <summary>进入程序房间触发选项时，选择消耗 1 点行动点获得的属性数值。</summary>
+        /// <summary>进入程序房间触发选项时，选择消耗 1 点行动点获得的愿望单数量。</summary>
         public const int ProgramRoomOneActionReward = 1011;
 
-        /// <summary>进入程序房间触发选项时，选择消耗 2 点行动点获得的属性数值。</summary>
+        /// <summary>进入程序房间触发选项时，选择消耗 2 点行动点获得的愿望单数量。</summary>
         public const int ProgramRoomTwoActionReward = 1012;
 
-        /// <summary>进入美术房间触发选项时，选择消耗 1 点行动点获得的属性数值。</summary>
+        /// <summary>进入美术房间触发选项时，选择消耗 1 点行动点获得的愿望单数量。</summary>
         public const int ArtRoomOneActionReward = 1013;
 
-        /// <summary>进入美术房间触发选项时，选择消耗 2 点行动点获得的属性数值。</summary>
+        /// <summary>进入美术房间触发选项时，选择消耗 2 点行动点获得的愿望单数量。</summary>
         public const int ArtRoomTwoActionReward = 1014;
 
-        /// <summary>进入音效房间触发选项时，选择消耗 1 点行动点获得的属性数值。</summary>
+        /// <summary>进入音效房间触发选项时，选择消耗 1 点行动点获得的愿望单数量。</summary>
         public const int AudioRoomOneActionReward = 1015;
 
-        /// <summary>进入音效房间触发选项时，选择消耗 2 点行动点获得的属性数值。</summary>
+        /// <summary>进入音效房间触发选项时，选择消耗 2 点行动点获得的愿望单数量。</summary>
         public const int AudioRoomTwoActionReward = 1016;
 
-        /// <summary>每在程序房间消耗 1 点行动点额外获得的属性数值。</summary>
+        /// <summary>每在程序房间消耗 1 点行动点额外获得的愿望单数量。</summary>
         public const int ProgramRoomPerActionReward = 1017;
 
-        /// <summary>每在美术房间消耗 1 点行动点额外获得的属性数值。</summary>
+        /// <summary>每在美术房间消耗 1 点行动点额外获得的愿望单数量。</summary>
         public const int ArtRoomPerActionReward = 1018;
 
-        /// <summary>每在音效房间消耗 1 点行动点额外获得的属性数值。</summary>
+        /// <summary>每在音效房间消耗 1 点行动点额外获得的愿望单数量。</summary>
         public const int AudioRoomPerActionReward = 1019;
 
         /// <summary>连续两回合在同一房间消耗行动点时获得的愿望单数量。</summary>
         public const int SameRoomConsecutiveWishlistReward = 1020;
 
-        /// <summary>每回合开始时，50% 概率获得的愿望单倍率。</summary>
+        /// <summary>每回合开始时，50% 概率获得的周结算愿望单百分比倍率。</summary>
         public const int WeekStartWishlistChanceMultiplier = 1021;
 
         /// <summary>第 3、6、9 回合结束时获得的愿望单数量。</summary>

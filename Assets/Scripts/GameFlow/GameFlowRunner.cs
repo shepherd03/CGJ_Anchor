@@ -7,6 +7,7 @@ using YokiFrame;
 using YokiFrame.Unity;
 
 using BuffRow = Anchor.Config.game.buff;
+using EventRow = Anchor.Config.game.gameEvent;
 
 namespace Anchor.GameFlow
 {
@@ -36,6 +37,15 @@ namespace Anchor.GameFlow
             {
                 EnsureController();
                 return mController.CurrentBudgetShopBuffOffers;
+            }
+        }
+
+        public EventRow CurrentWeekGameEvent
+        {
+            get
+            {
+                EnsureController();
+                return mController.CurrentWeekGameEvent;
             }
         }
 
@@ -72,6 +82,8 @@ namespace Anchor.GameFlow
         private void OnEnable()
         {
             EventKit.Type.Register<GameFlowStateChangedEvent>(OnStateChanged);
+            EventKit.Type.Register<WeekGameEventTriggeredEvent>(OnWeekGameEventTriggered);
+            EventKit.Type.Register<WeekGameEventResolvedEvent>(OnWeekGameEventResolved);
             EventKit.Type.Register<WeekResolvedEvent>(OnWeekResolved);
             EventKit.Type.Register<MonthSettledEvent>(OnMonthSettled);
             EventKit.Type.Register<GameEndingSelectedEvent>(OnEndingSelected);
@@ -83,6 +95,8 @@ namespace Anchor.GameFlow
         private void OnDisable()
         {
             EventKit.Type.UnRegister<GameFlowStateChangedEvent>(OnStateChanged);
+            EventKit.Type.UnRegister<WeekGameEventTriggeredEvent>(OnWeekGameEventTriggered);
+            EventKit.Type.UnRegister<WeekGameEventResolvedEvent>(OnWeekGameEventResolved);
             EventKit.Type.UnRegister<WeekResolvedEvent>(OnWeekResolved);
             EventKit.Type.UnRegister<MonthSettledEvent>(OnMonthSettled);
             EventKit.Type.UnRegister<GameEndingSelectedEvent>(OnEndingSelected);
@@ -147,6 +161,22 @@ namespace Anchor.GameFlow
         {
             EnsureController();
             return mController.TryPurchaseBudgetShopBuff(buffId, out result);
+        }
+
+        public bool ChooseWeekGameEvent(bool chooseYes)
+        {
+            EnsureController();
+            return mController.ChooseWeekGameEvent(chooseYes);
+        }
+
+        public bool ChooseWeekGameEventYes()
+        {
+            return ChooseWeekGameEvent(true);
+        }
+
+        public bool ChooseWeekGameEventNo()
+        {
+            return ChooseWeekGameEvent(false);
         }
 
         [ContextMenu("结束本周行动")]
@@ -241,7 +271,8 @@ namespace Anchor.GameFlow
                 attributeCatalog,
                 settings,
                 mAutoAdvanceInteractiveStates,
-                GameConfigs.Tables.Tbbuff.DataList);
+                GameConfigs.Tables.Tbbuff.DataList,
+                GameConfigs.Tables.TbgameEvent.DataList);
         }
 
         private static void EnsureResKitProvider()
@@ -271,6 +302,29 @@ namespace Anchor.GameFlow
             }
 
             Debug.Log("[游戏流程] " + flowEvent.Result.Summary);
+        }
+
+        private void OnWeekGameEventTriggered(WeekGameEventTriggeredEvent flowEvent)
+        {
+            if (!mLogEvents || flowEvent.Blackboard != mController?.Blackboard || flowEvent.Event == null)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"[游戏流程] 周事件触发：{flowEvent.Event.Title}（{flowEvent.Event.Id}），待处理 {flowEvent.PendingEventCount}/{flowEvent.TotalEventCount}");
+        }
+
+        private void OnWeekGameEventResolved(WeekGameEventResolvedEvent flowEvent)
+        {
+            if (!mLogEvents || flowEvent.Blackboard != mController?.Blackboard || flowEvent.Result.Event == null)
+            {
+                return;
+            }
+
+            var choice = flowEvent.Result.ChooseYes ? "Y" : "N";
+            Debug.Log(
+                $"[游戏流程] 周事件选择：{flowEvent.Result.Event.Title}（{flowEvent.Result.EventId}）=> {choice}，应用 {flowEvent.Result.AppliedEffectCount} 条效果");
         }
 
         private void OnMonthSettled(MonthSettledEvent flowEvent)
@@ -333,6 +387,7 @@ namespace Anchor.GameFlow
                 GameFlowState.MonthStart => "月开始",
                 GameFlowState.BudgetShop => "月初商店",
                 GameFlowState.WeekStart => "周开始",
+                GameFlowState.WeekEvent => "周事件",
                 GameFlowState.WeekAction => "周行动",
                 GameFlowState.WeekResolve => "周结算",
                 GameFlowState.MonthSettlement => "月结算",

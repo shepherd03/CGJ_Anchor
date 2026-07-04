@@ -26,12 +26,17 @@ namespace Anchor.GameFlow
         WeekStart,
 
         /// <summary>
+        /// 周事件阶段，处理周开始触发的配置事件和玩家选择。
+        /// </summary>
+        WeekEvent,
+
+        /// <summary>
         /// 周行动阶段，玩家把行动力投入到不同开发方向。
         /// </summary>
         WeekAction,
 
         /// <summary>
-        /// 周结算阶段，将本周投点转换为属性变化、金币变化和事件结果。
+        /// 周结算阶段，将本周投点转换为属性变化和金币变化。
         /// </summary>
         WeekResolve,
 

@@ -22,11 +22,11 @@ namespace Anchor.GameFlow
             var coinDelta = -(program + art + audio) * 35;
             var wishlistDelta = 0;
             wishlistDelta += GetWeeklyWishlistBonus(blackboard, program, art, audio, visualDelta, bugDelta);
+            wishlistDelta = (int)Math.Round(wishlistDelta * blackboard.CurrentWeekWishlistMultiplier);
 
             var eventId = 0;
             if (blackboard.RemainingActionPoints > 0)
             {
-                eventId = 1001;
                 coinDelta += blackboard.RemainingActionPoints * 20;
             }
 
@@ -168,6 +168,11 @@ namespace Anchor.GameFlow
             if (program > 0 && art > 0 && audio > 0)
             {
                 bonus += blackboard.AllRoomsSameWeekWishlistGrowthBonus;
+            }
+
+            if (blackboard.HasAnySameRoomSpentAsPreviousWeek())
+            {
+                bonus += blackboard.SameRoomConsecutiveWishlistReward;
             }
 
             return bonus;

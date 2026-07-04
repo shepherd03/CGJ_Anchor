@@ -42,6 +42,8 @@ namespace Anchor.GameFlow
         {
             BindButtons();
             EventKit.Type.Register<GameFlowStateChangedEvent>(OnStateChanged);
+            EventKit.Type.Register<WeekGameEventTriggeredEvent>(OnWeekGameEventTriggered);
+            EventKit.Type.Register<WeekGameEventResolvedEvent>(OnWeekGameEventResolved);
             EventKit.Type.Register<WeekResolvedEvent>(OnWeekResolved);
             EventKit.Type.Register<MonthSettledEvent>(OnMonthSettled);
             EventKit.Type.Register<GameEndingSelectedEvent>(OnEndingSelected);
@@ -53,6 +55,8 @@ namespace Anchor.GameFlow
         {
             UnbindButtons();
             EventKit.Type.UnRegister<GameFlowStateChangedEvent>(OnStateChanged);
+            EventKit.Type.UnRegister<WeekGameEventTriggeredEvent>(OnWeekGameEventTriggered);
+            EventKit.Type.UnRegister<WeekGameEventResolvedEvent>(OnWeekGameEventResolved);
             EventKit.Type.UnRegister<WeekResolvedEvent>(OnWeekResolved);
             EventKit.Type.UnRegister<MonthSettledEvent>(OnMonthSettled);
             EventKit.Type.UnRegister<GameEndingSelectedEvent>(OnEndingSelected);
@@ -87,6 +91,10 @@ namespace Anchor.GameFlow
                     mRunner.ConfirmBudgetShop();
                     AddLog("确认月初商店，进入本周行动");
                     break;
+                case GameFlowState.WeekEvent:
+                    mRunner.ChooseWeekGameEventYes();
+                    AddLog("周事件默认选择 Y");
+                    break;
                 case GameFlowState.WeekAction:
                     mRunner.FinishWeekAction();
                     AddLog("结束本周行动，进入周结算");
@@ -120,6 +128,13 @@ namespace Anchor.GameFlow
             {
                 mRunner.ConfirmBudgetShop();
                 AddLog("确认月初商店");
+                return;
+            }
+
+            if (controller.CurrentState == GameFlowState.WeekEvent)
+            {
+                mRunner.ChooseWeekGameEventYes();
+                AddLog("周事件默认选择 Y");
                 return;
             }
 
@@ -409,6 +424,7 @@ namespace Anchor.GameFlow
                         $"状态：{GetStateName(controller.CurrentState)}\n" +
                         $"月份：第 {blackboard.MonthIndex} 月\n" +
                         $"周数：第 {blackboard.WeekIndex} 周\n" +
+                        $"周事件：{GetCurrentWeekEventTitle(controller)}\n" +
                         $"结算：{(blackboard.CurrentMonth != null ? blackboard.CurrentMonth.DisplayName : "无")}";
                 }
             }
@@ -470,6 +486,22 @@ namespace Anchor.GameFlow
             }
         }
 
+        private void OnWeekGameEventTriggered(WeekGameEventTriggeredEvent flowEvent)
+        {
+            if (flowEvent.Blackboard == mRunner?.Controller?.Blackboard && flowEvent.Event != null)
+            {
+                AddLog($"周事件触发：{flowEvent.Event.Title}");
+            }
+        }
+
+        private void OnWeekGameEventResolved(WeekGameEventResolvedEvent flowEvent)
+        {
+            if (flowEvent.Blackboard == mRunner?.Controller?.Blackboard && flowEvent.Result.Event != null)
+            {
+                AddLog($"周事件选择：{flowEvent.Result.Event.Title} => {(flowEvent.Result.ChooseYes ? "Y" : "N")}");
+            }
+        }
+
         private void OnMonthSettled(MonthSettledEvent flowEvent)
         {
             if (flowEvent.Blackboard == mRunner?.Controller?.Blackboard)
@@ -502,6 +534,7 @@ namespace Anchor.GameFlow
                 GameFlowState.MonthStart => "月开始",
                 GameFlowState.BudgetShop => "月初商店",
                 GameFlowState.WeekStart => "周开始",
+                GameFlowState.WeekEvent => "周事件",
                 GameFlowState.WeekAction => "周行动",
                 GameFlowState.WeekResolve => "周结算",
                 GameFlowState.MonthSettlement => "月结算",
@@ -513,6 +546,11 @@ namespace Anchor.GameFlow
         private string GetAttributeName(int attributeId)
         {
             return mRunner?.Controller?.Blackboard.AttributeCatalog.GetDisplayName(attributeId) ?? attributeId.ToString();
+        }
+
+        private static string GetCurrentWeekEventTitle(GameFlowController controller)
+        {
+            return controller?.CurrentWeekGameEvent != null ? controller.CurrentWeekGameEvent.Title : "无";
         }
     }
 }

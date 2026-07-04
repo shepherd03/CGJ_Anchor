@@ -13,7 +13,8 @@ namespace Anchor.GameFlow.States
         {
             NotifyEntered(GameFlowState.WeekStart);
             mBlack.BeginWeek();
-            mFSM.Change(GameFlowState.WeekAction);
+            Controller.RollWeekStartGameEvents();
+            mFSM.Change(Controller.HasPendingWeekGameEvent ? GameFlowState.WeekEvent : GameFlowState.WeekAction);
         }
     }
 }

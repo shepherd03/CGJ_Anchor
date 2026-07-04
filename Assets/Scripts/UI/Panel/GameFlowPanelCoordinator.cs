@@ -115,6 +115,10 @@ namespace Anchor.UI.Panel
                     CloseBuffWindow();
                     RouteCurrentState(runner);
                     break;
+                case GameFlowState.WeekEvent:
+                    runner.ChooseWeekGameEventYes();
+                    RouteCurrentState(runner);
+                    break;
                 case GameFlowState.WeekAction:
                     runner.FinishWeekAction();
                     CloseMainPanel();
@@ -163,6 +167,9 @@ namespace Anchor.UI.Panel
                 case GameFlowState.BudgetShop:
                     OpenBuffWindow();
                     break;
+                case GameFlowState.WeekEvent:
+                    StartFlowRoutine(RouteFlowAfterCurrentState(runner));
+                    break;
                 case GameFlowState.WeekAction:
                     OpenMainPanel();
                     break;
@@ -185,6 +192,14 @@ namespace Anchor.UI.Panel
             {
                 switch (runner.Controller.CurrentState)
                 {
+                    case GameFlowState.WeekEvent:
+                        if (!runner.ChooseWeekGameEventYes())
+                        {
+                            yield break;
+                        }
+
+                        yield return null;
+                        break;
                     case GameFlowState.WeekResolve:
                         yield return OpenWeekPanelAndWaitForClose();
                         runner.ContinueFlow();

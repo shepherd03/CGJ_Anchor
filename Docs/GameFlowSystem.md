@@ -76,6 +76,8 @@ runner.TrySpendArtOneActionPoint();
 runner.TrySpendArtTwoActionPoints();
 runner.TrySpendAudioOneActionPoint();
 runner.TrySpendAudioTwoActionPoints();
+runner.ChooseWeekGameEventYes();
+runner.ChooseWeekGameEventNo();
 runner.FinishWeekAction();
 runner.ContinueFlow();
 ```
@@ -94,11 +96,13 @@ runner.ContinueFlow();
 美术房间 2AP 按钮       TrySpendArtTwoActionPoints
 音效房间 1AP 按钮       TrySpendAudioOneActionPoint
 音效房间 2AP 按钮       TrySpendAudioTwoActionPoints
+周事件 Y 按钮           ChooseWeekGameEventYes
+周事件 N 按钮           ChooseWeekGameEventNo
 本周结束按钮             FinishWeekAction
 周结算/月结算继续按钮    ContinueFlow
 ```
 
-`TryAllocateXxx` 返回 `false` 表示当前不是周行动阶段，或行动力不足。
+`TryAllocateXxx` 返回 `false` 表示当前不是周行动阶段，或行动力不足。`ChooseWeekGameEventXxx` 返回 `false` 表示当前没有可选择的周事件。
 
 ## 玩家属性
 
@@ -220,6 +224,16 @@ blackboard.PlayerAttributes.Set(
 
 如果是持续效果，建议后续单独做一层 Buff Runtime，用于记录持续时间、过期时机和回滚逻辑。
 
+当前 `gameEvent` 表已接入每周开始流程：`WeekStart` 刷新行动力后，会逐行检查事件表。每条事件必须同时满足：
+
+```text
+triggerGreaterOrEqualConditions 全部满足
+triggerLessThanConditions 全部满足
+Ratio 随机判定通过
+```
+
+触发后流程进入 `WeekEvent` 状态。UI 监听 `WeekGameEventTriggeredEvent` 显示事件标题和内容，然后调用 `ChooseWeekGameEventYes()` 或 `ChooseWeekGameEventNo()` 应用对应效果。没有触发事件时直接进入 `WeekAction`。
+
 ### 配表字段
 
 事件表：
@@ -233,7 +247,9 @@ Config/Luban/Datas/#game.gameEvent.xlsx
 ```text
 yesEffects           选择 Y 后应用的属性修改，格式 [[属性ID,值]]
 noEffects            选择 N 后应用的属性修改，格式 [[属性ID,值]]
-triggerConditions    触发条件，格式 [[属性ID,阈值]]
+triggerGreaterOrEqualConditions  大于等于触发条件，格式 [[属性ID,阈值]]
+triggerLessThanConditions        小于触发条件，格式 [[属性ID,阈值]]
+ratio                随机触发概率，范围 0 到 1
 ```
 
 Buff 表：
@@ -246,7 +262,8 @@ Config/Luban/Datas/#game.buff.xlsx
 
 ```text
 effects              Buff 生效时应用的属性修改，格式 [[属性ID,值]]
-triggerConditions    Buff 触发条件，格式 [[属性ID,阈值]]
+cost                 Buff 花费
+weight               Buff 商店抽取权重
 ```
 
 这些字段在 Luban 里类型为 `array,array,int`，生成到 C# 后是 `int[][]`。每个内部数组必须刚好两项：第 1 项是玩家属性 ID，第 2 项是整数值。
@@ -278,6 +295,23 @@ private void OnWeekResolved(WeekResolvedEvent e)
 }
 ```
 
+监听周事件：
+
+```csharp
+EventKit.Type.Register<WeekGameEventTriggeredEvent>(OnWeekGameEventTriggered);
+EventKit.Type.Register<WeekGameEventResolvedEvent>(OnWeekGameEventResolved);
+
+private void OnWeekGameEventTriggered(WeekGameEventTriggeredEvent e)
+{
+    Debug.Log(e.Event.Title);
+}
+
+private void OnWeekGameEventResolved(WeekGameEventResolvedEvent e)
+{
+    Debug.Log(e.Result.ChooseYes ? "Y" : "N");
+}
+```
+
 监听月结算：
 
 ```csharp
@@ -305,6 +339,8 @@ private void OnAttributeChanged(CharacterAttributeChangedEvent e)
 
 ```csharp
 EventKit.Type.UnRegister<GameFlowStateChangedEvent>(OnStateChanged);
+EventKit.Type.UnRegister<WeekGameEventTriggeredEvent>(OnWeekGameEventTriggered);
+EventKit.Type.UnRegister<WeekGameEventResolvedEvent>(OnWeekGameEventResolved);
 EventKit.Type.UnRegister<CharacterAttributeChangedEvent>(OnAttributeChanged);
 ```
 
@@ -361,6 +397,12 @@ Art 1AP       画面 +5 到 +7
 Art 2AP       画面 +13 到 +15
 Audio 1AP     氛围 +5 到 +7
 Audio 2AP     氛围 +12 到 +15
+```
+
+房间按钮还会按 `1011-1019` 额外增加愿望单：
+
+```text
+愿望单奖励 = 档位奖励 + 每 AP 奖励 * 消耗 AP
 ```
 
 当前月结算会根据：
