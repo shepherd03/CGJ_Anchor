@@ -18,6 +18,7 @@ namespace Anchor.UI.Panel
         [SerializeField] private RectTransform panelRoot;
         [SerializeField] private CanvasGroup canvasGroup;
         [SerializeField] private RectTransform idle;
+        [SerializeField] private Sprite[] idleSprites;
 
         [Header("Content")]
         [SerializeField] private TMP_Text eventName;
@@ -158,6 +159,7 @@ namespace Anchor.UI.Panel
             KillAnimation();
             StopTypewriter();
             Populate(eventRow);
+            RandomizeIdleSprite();
 
             isVisible = true;
             isResolving = false;
@@ -283,6 +285,29 @@ namespace Anchor.UI.Panel
             eventContent.text = eventRow.Content ?? string.Empty;
             eventContent.maxVisibleCharacters = 0;
             eventContent.ForceMeshUpdate();
+        }
+
+        /// <summary>
+        /// 每次打开事件面板时，从配置的 Idle 立绘列表中随机选择一张。
+        /// </summary>
+        private void RandomizeIdleSprite()
+        {
+            if (idle == null || idleSprites == null || idleSprites.Length == 0)
+            {
+                return;
+            }
+
+            Image idleImage = idle.GetComponent<Image>();
+            if (idleImage == null)
+            {
+                return;
+            }
+
+            Sprite selectedSprite = idleSprites[UnityEngine.Random.Range(0, idleSprites.Length)];
+            if (selectedSprite != null)
+            {
+                idleImage.sprite = selectedSprite;
+            }
         }
 
         /// <summary>
