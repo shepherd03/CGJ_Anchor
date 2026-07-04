@@ -233,16 +233,15 @@ namespace Anchor.GameFlow
             if (mBugButton != null) mBugButton.onClick.RemoveListener(AddBug);
         }
 
+        /// <summary>
+        /// 获取测试面板使用的流程入口，优先保留 Inspector 显式引用。
+        /// </summary>
         private void EnsureRunner()
         {
             if (mRunner == null)
             {
-                mRunner = GetComponent<GameFlowRunner>();
-            }
-
-            if (mRunner == null)
-            {
-                mRunner = FindObjectOfType<GameFlowRunner>();
+                // 使用 GameFlowRunner 单例，避免测试面板运行时扫描场景。
+                mRunner = GameFlowRunner.Instance;
             }
         }
 

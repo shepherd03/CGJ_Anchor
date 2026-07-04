@@ -16,7 +16,6 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("点击后关闭当前 BuffWindow 的按钮。")]
         private Button closeButton;
 
-        private GameFlowRunner gameFlowRunner;
         private MainPanelManager mainPanelManager;
 
         /// <summary>
@@ -107,18 +106,19 @@ namespace Anchor.UI.Panel
         /// </summary>
         private bool TryConfirmBudgetShop()
         {
-            EnsureGameFlowRunner();
+            // 通过 GameFlowRunner 单例确认流程，不再运行时扫描场景。
+            GameFlowRunner runner = GameFlowRunner.Instance;
 
-            if (gameFlowRunner == null || gameFlowRunner.Controller == null)
+            if (runner == null || runner.Controller == null)
             {
-                Debug.LogWarning($"{nameof(WindowShopPanelManager)} cannot find active {nameof(GameFlowRunner)}.", this);
+                Debug.LogWarning($"{nameof(WindowShopPanelManager)} cannot find active {nameof(GameFlowRunner)} instance.", this);
                 return false;
             }
 
-            GameFlowState currentState = gameFlowRunner.Controller.CurrentState;
+            GameFlowState currentState = runner.Controller.CurrentState;
             if (currentState == GameFlowState.BudgetShop)
             {
-                gameFlowRunner.ConfirmBudgetShop();
+                runner.ConfirmBudgetShop();
                 return true;
             }
 
@@ -155,17 +155,6 @@ namespace Anchor.UI.Panel
             if (mainPanelManager == null)
             {
                 mainPanelManager = FindObjectOfType<MainPanelManager>(true);
-            }
-        }
-
-        /// <summary>
-        /// 查找并缓存场景中的 GameFlowRunner。
-        /// </summary>
-        private void EnsureGameFlowRunner()
-        {
-            if (gameFlowRunner == null)
-            {
-                gameFlowRunner = FindObjectOfType<GameFlowRunner>();
             }
         }
 

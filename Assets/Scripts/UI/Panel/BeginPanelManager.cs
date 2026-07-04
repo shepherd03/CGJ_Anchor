@@ -11,7 +11,6 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("点击后开始新游戏并关闭当前 BeginPanel 的按钮。")]
         private Button startButton;
 
-        private GameFlowRunner gameFlowRunner;
         private WindowShopPanelManager windowShopPanelManager;
 
         /// <summary>
@@ -35,15 +34,16 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void OnStartButtonClicked()
         {
-            EnsureGameFlowRunner();
+            // 通过 GameFlowRunner 单例启动流程，避免每次点击时扫描场景。
+            GameFlowRunner runner = GameFlowRunner.Instance;
 
-            if (gameFlowRunner == null)
+            if (runner == null)
             {
-                Debug.LogWarning($"{nameof(BeginPanelManager)} cannot find {nameof(GameFlowRunner)} in the scene.", this);
+                Debug.LogWarning($"{nameof(BeginPanelManager)} cannot find {nameof(GameFlowRunner)} instance.", this);
                 return;
             }
 
-            gameFlowRunner.StartNewGame();
+            runner.StartNewGame();
             gameObject.SetActive(false);
             OpenBuffWindow();
         }
@@ -74,17 +74,6 @@ namespace Anchor.UI.Panel
             }
 
             startButton.onClick.RemoveListener(OnStartButtonClicked);
-        }
-
-        /// <summary>
-        /// 查找并缓存场景中的 GameFlowRunner。
-        /// </summary>
-        private void EnsureGameFlowRunner()
-        {
-            if (gameFlowRunner == null)
-            {
-                gameFlowRunner = FindObjectOfType<GameFlowRunner>();
-            }
         }
 
         /// <summary>

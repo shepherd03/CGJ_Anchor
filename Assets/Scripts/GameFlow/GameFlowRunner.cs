@@ -9,6 +9,11 @@ namespace Anchor.GameFlow
     [DisallowMultipleComponent]
     public sealed class GameFlowRunner : MonoBehaviour
     {
+        /// <summary>
+        /// 当前场景唯一的游戏流程入口，供 UI 直接调用流程控制方法。
+        /// </summary>
+        public static GameFlowRunner Instance { get; private set; }
+
         [Header("启动")]
         [SerializeField] private bool mStartOnAwake = true;
         [SerializeField] private bool mAutoAdvanceInteractiveStates;
@@ -22,13 +27,33 @@ namespace Anchor.GameFlow
 
         public GameFlowController Controller => mController;
 
+        /// <summary>
+        /// 初始化流程单例和流程控制器。
+        /// </summary>
         private void Awake()
         {
+            if (!RegisterInstance())
+            {
+                enabled = false;
+                return;
+            }
+
             CreateController();
 
             if (mStartOnAwake)
             {
                 mController.StartNewGame();
+            }
+        }
+
+        /// <summary>
+        /// Runner 销毁时释放单例引用，避免下一个场景拿到旧实例。
+        /// </summary>
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
             }
         }
 
@@ -53,6 +78,21 @@ namespace Anchor.GameFlow
         private void Update()
         {
             mController?.Update();
+        }
+
+        /// <summary>
+        /// 注册当前场景唯一的流程入口，阻止多个 Runner 同时驱动流程。
+        /// </summary>
+        private bool RegisterInstance()
+        {
+            if (Instance != null && Instance != this)
+            {
+                Debug.LogError($"{nameof(GameFlowRunner)} 已存在有效实例，重复的 Runner 会被禁用：{name}", this);
+                return false;
+            }
+
+            Instance = this;
+            return true;
         }
 
         [ContextMenu("开始新游戏")]

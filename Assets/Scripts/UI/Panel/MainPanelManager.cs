@@ -22,9 +22,10 @@ namespace Anchor.UI.Panel
 
         private const float BulletScreenDuration = 4f;
 
-        private GameFlowRunner gameFlowRunner;
         private WindowShopPanelManager windowShopPanelManager;
         private Coroutine flowAdvanceCoroutine;
+        // 流程推进协程挂在 GameFlowRunner 上，避免 MainPanel 隐藏后协程被停掉。
+        private GameFlowRunner flowCoroutineOwner;
         private bool isAdvancingFlow;
 
         /// <summary>
@@ -44,7 +45,7 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 物体销毁时停止托管在 GameFlowRunner 上的流程协程。
+        /// 物体销毁时停止托管在 GameFlowRunner 实例上的流程协程。
         /// </summary>
         private void OnDestroy()
         {
@@ -75,11 +76,12 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void OnNextWeekButtonClicked()
         {
-            EnsureGameFlowRunner();
+            // 通过 GameFlowRunner 单例推进流程，不再运行时扫描场景。
+            GameFlowRunner runner = GameFlowRunner.Instance;
 
-            if (gameFlowRunner == null)
+            if (runner == null)
             {
-                Debug.LogWarning($"{nameof(MainPanelManager)} cannot find {nameof(GameFlowRunner)} in the scene.", this);
+                Debug.LogWarning($"{nameof(MainPanelManager)} cannot find {nameof(GameFlowRunner)} instance.", this);
                 return;
             }
 
@@ -88,49 +90,51 @@ namespace Anchor.UI.Panel
                 return;
             }
 
-            if (gameFlowRunner.Controller == null || gameFlowRunner.Controller.CurrentState != GameFlowState.WeekAction)
+            if (runner.Controller == null || runner.Controller.CurrentState != GameFlowState.WeekAction)
             {
                 Debug.LogWarning($"{nameof(MainPanelManager)} can only finish week action during {nameof(GameFlowState.WeekAction)}.", this);
                 return;
             }
 
-            gameFlowRunner.FinishWeekAction();
+            runner.FinishWeekAction();
             Close();
-            flowAdvanceCoroutine = gameFlowRunner.StartCoroutine(AdvanceFlowAfterWeekResolve());
+            flowCoroutineOwner = runner;
+            flowAdvanceCoroutine = runner.StartCoroutine(AdvanceFlowAfterWeekResolve(runner));
         }
 
         /// <summary>
         /// 处理周结算展示，然后根据后续状态打开对应 UI。
         /// </summary>
-        private IEnumerator AdvanceFlowAfterWeekResolve()
+        private IEnumerator AdvanceFlowAfterWeekResolve(GameFlowRunner runner)
         {
             isAdvancingFlow = true;
 
-            yield return RouteFlowAfterCurrentState();
+            yield return RouteFlowAfterCurrentState(runner);
 
             flowAdvanceCoroutine = null;
+            flowCoroutineOwner = null;
             isAdvancingFlow = false;
         }
 
         /// <summary>
         /// 按当前流程状态决定下一步 UI；周结算打开 WeekPanel，月结算才播放弹幕。
         /// </summary>
-        private IEnumerator RouteFlowAfterCurrentState()
+        private IEnumerator RouteFlowAfterCurrentState(GameFlowRunner runner)
         {
-            while (gameFlowRunner != null && gameFlowRunner.Controller != null)
+            while (runner != null && runner.Controller != null)
             {
-                switch (gameFlowRunner.Controller.CurrentState)
+                switch (runner.Controller.CurrentState)
                 {
                     case GameFlowState.WeekResolve:
                         yield return OpenWeekPanelAndWaitForClose();
-                        gameFlowRunner.ContinueFlow();
+                        runner.ContinueFlow();
                         break;
                     case GameFlowState.WeekAction:
                         Open();
                         yield break;
                     case GameFlowState.MonthSettlement:
                         yield return PlayBulletScreenForDuration();
-                        gameFlowRunner.ContinueFlow();
+                        runner.ContinueFlow();
                         break;
                     case GameFlowState.BudgetShop:
                         OpenBuffWindow();
@@ -261,17 +265,6 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 查找并缓存场景中的 GameFlowRunner。
-        /// </summary>
-        private void EnsureGameFlowRunner()
-        {
-            if (gameFlowRunner == null)
-            {
-                gameFlowRunner = FindObjectOfType<GameFlowRunner>();
-            }
-        }
-
-        /// <summary>
         /// 查找并缓存场景中的周结算面板，包含初始未激活的面板。
         /// </summary>
         private void EnsureWeekPanelManager()
@@ -309,13 +302,14 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void StopFlowAdvanceCoroutine()
         {
-            if (flowAdvanceCoroutine == null || gameFlowRunner == null)
+            if (flowAdvanceCoroutine == null || flowCoroutineOwner == null)
             {
                 return;
             }
 
-            gameFlowRunner.StopCoroutine(flowAdvanceCoroutine);
+            flowCoroutineOwner.StopCoroutine(flowAdvanceCoroutine);
             flowAdvanceCoroutine = null;
+            flowCoroutineOwner = null;
             isAdvancingFlow = false;
         }
 
