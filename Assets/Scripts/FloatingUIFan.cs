@@ -51,6 +51,12 @@ public sealed class FloatingUIFan : MonoBehaviour
     private Sequence transitionSequence;
 
     public bool IsOpen { get; private set; }
+
+    /// <summary>
+    /// 当前是否正在播放打开或关闭过渡动画。
+    /// </summary>
+    public bool IsTransitioning => transitionSequence != null;
+
     public UnityEvent OnOpenStarted => onOpenStarted;
     public UnityEvent OnOpened => onOpened;
     public UnityEvent OnCloseStarted => onCloseStarted;
