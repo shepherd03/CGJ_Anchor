@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Anchor.GameFlow;
+using Anchor.GameFlow.Buffs;
 using Anchor.Window;
 using UnityEngine;
 using UnityEngine.UI;
@@ -182,6 +183,7 @@ namespace Anchor.UI.Panel
             }
 
             InjectIntroductionData(buffRow);
+            introductionWindow.SetBuyAction(() => TryPurchaseIntroductionBuff(buffRow));
             introductionWindow.Open();
         }
 
@@ -400,6 +402,34 @@ namespace Anchor.UI.Panel
             }
 
             buffButton.onClick.AddListener(() => OpenIntroductionWindow(buffRow));
+        }
+
+        /// <summary>
+        /// 购买当前介绍弹窗指向的 Buff；成功后刷新商店卡片并关闭二级弹窗。
+        /// </summary>
+        private void TryPurchaseIntroductionBuff(BuffRow buffRow)
+        {
+            if (buffRow == null)
+            {
+                Debug.LogWarning($"{nameof(WindowShopPanelManager)} cannot purchase an empty Buff.", this);
+                return;
+            }
+
+            GameFlowRunner runner = GameFlowRunner.Instance;
+            if (runner == null)
+            {
+                Debug.LogWarning($"{nameof(WindowShopPanelManager)} cannot find {nameof(GameFlowRunner)} instance.", this);
+                return;
+            }
+
+            if (!runner.TryPurchaseBudgetShopBuff(buffRow.Id, out BuffPurchaseResult result))
+            {
+                Debug.LogWarning($"{nameof(WindowShopPanelManager)} failed to purchase Buff {buffRow.Id}: {result.Status}. {result.Message}", this);
+                return;
+            }
+
+            InjectData(runner.CurrentBudgetShopBuffOffers);
+            introductionWindow.Close();
         }
 
         /// <summary>
