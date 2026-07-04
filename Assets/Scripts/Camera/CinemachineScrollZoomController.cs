@@ -1,23 +1,46 @@
+using System;
+using System.Collections.Generic;
 using Cinemachine;
 using UnityEngine;
-using UnityEngine.Serialization;
+using UnityEngine.Events;
+using UnityEngine.UI;
 
 /// <summary>
-/// 根据鼠标滚轮在两个 Cinemachine Virtual Camera 之间平滑切换。
+/// 通过按钮点击在多个 Cinemachine Virtual Camera 之间平滑切换。
 /// </summary>
 [DisallowMultipleComponent]
 public class CinemachineScrollZoomController : MonoBehaviour
 {
+    [Serializable]
+    public sealed class CameraButtonBinding
+    {
+        [SerializeField, Tooltip("配置名称，只用于在 Inspector 里区分这一组按钮和镜头。")]
+        private string bindingName;
+
+        [SerializeField, Tooltip("点击后触发镜头切换的 UI Button。")]
+        private Button button;
+
+        [SerializeField, Tooltip("点击按钮后切换到的 Cinemachine Virtual Camera。")]
+        private CinemachineVirtualCamera virtualCamera;
+
+        [SerializeField, Tooltip("是否启用这一组按钮和镜头绑定。关闭后点击不会切换镜头。")]
+        private bool enabled = true;
+
+        public string BindingName => bindingName;
+        public Button Button => button;
+        public CinemachineVirtualCamera VirtualCamera => virtualCamera;
+        public bool Enabled => enabled;
+    }
+
     [Header("Cameras")]
     [SerializeField, Tooltip("主摄像机上的 CinemachineBrain。留空时自动从 Camera.main 查找。")]
     private CinemachineBrain cinemachineBrain;
 
-    [FormerlySerializedAs("virtualCamera")]
-    [SerializeField, Tooltip("滚轮后退时切回的原先虚拟镜头。留空时自动取当前物体上的 CinemachineVirtualCamera。")]
-    private CinemachineVirtualCamera originalVirtualCamera;
+    [SerializeField, Tooltip("默认虚拟镜头。初始化时会切到这个镜头；留空则使用数组里的第一个有效镜头。")]
+    private CinemachineVirtualCamera defaultVirtualCamera;
 
-    [SerializeField, Tooltip("滚轮向前时切换到的目标虚拟镜头。必须手动拖入另一个 CinemachineVirtualCamera。")]
-    private CinemachineVirtualCamera targetVirtualCamera;
+    [SerializeField, Tooltip("按钮和虚拟镜头的绑定数组。你在这里配置每个按钮对应切到哪个虚拟镜头。")]
+    private CameraButtonBinding[] cameraButtonBindings = Array.Empty<CameraButtonBinding>();
 
     [Header("Priority")]
     [SerializeField, Tooltip("被激活镜头的 Priority。必须高于未激活镜头。")]
@@ -26,8 +49,8 @@ public class CinemachineScrollZoomController : MonoBehaviour
     [SerializeField, Tooltip("未激活镜头的 Priority。数值低于激活镜头即可。")]
     private int inactivePriority = 0;
 
-    [SerializeField, Tooltip("启动时是否初始化两个虚拟镜头的 Priority，并默认显示原先镜头。")]
-    private bool initializePrioritiesOnAwake = true;
+    [SerializeField, Tooltip("启动时是否初始化所有已配置虚拟镜头的 Priority。")]
+    private bool initializePrioritiesOnStart = true;
 
     [Header("Blend")]
     [SerializeField, Tooltip("是否用这里的设置覆盖 CinemachineBrain 的默认过渡效果。")]
@@ -39,117 +62,255 @@ public class CinemachineScrollZoomController : MonoBehaviour
     [SerializeField, Min(0f), Tooltip("镜头切换过渡时间，单位秒。0 表示瞬切。")]
     private float blendTime = 0.6f;
 
-    [Header("Input")]
-    [SerializeField, Tooltip("是否启用鼠标滚轮切换镜头。关闭后不会响应滚轮。")]
-    private bool enableScrollSwitch = true;
+    [Header("Buttons")]
+    [SerializeField, Tooltip("是否自动给数组里的每个 Button 注册点击事件。开启后不用在 Button 的 OnClick 里手动绑定。")]
+    private bool autoRegisterButtonClicks = true;
 
-    [SerializeField, Min(0f), Tooltip("滚轮输入阈值。滚轮增量绝对值小于该值时忽略。")]
-    private float scrollThreshold = 0.01f;
+    [SerializeField, Tooltip("是否由脚本自动管理按钮是否可点击。")]
+    private bool manageButtonInteractable = true;
 
-    [SerializeField, Tooltip("反转滚轮方向。默认滚轮向前切到目标镜头，向后切回原先镜头。")]
-    private bool invertScrollDirection;
+    [SerializeField, Tooltip("当前已激活镜头对应的按钮是否禁用，防止重复点击同一个镜头。")]
+    private bool disableActiveButton = true;
 
-    private Transform cachedTargetVirtualCameraFollow;
-    private bool hasCachedTargetVirtualCameraFollow;
-    private bool restoreTargetFollowWhenBlendEnds;
-    private int restoreTargetFollowRequestFrame = -1;
-    private bool showingTargetCamera;
+    [SerializeField, Tooltip("再次点击当前已激活镜头对应的按钮时，是否切回默认虚拟镜头。开启后当前按钮不会被禁用。")]
+    private bool activeButtonReturnsToDefaultCamera = true;
+
+    private readonly List<Button> registeredButtons = new List<Button>();
+    private readonly List<UnityAction> registeredActions = new List<UnityAction>();
+    private CinemachineVirtualCamera currentVirtualCamera;
 
     /// <summary>
-    /// 添加组件时自动补齐同物体上的虚拟镜头和主摄像机上的 CinemachineBrain。
+    /// 添加组件时自动补齐主摄像机上的 CinemachineBrain。
     /// </summary>
     private void Reset()
     {
-        ResolveReferences();
+        EnsureBindingsArray();
+        ResolveBrain();
     }
 
     /// <summary>
-    /// 初始化依赖、过渡效果和默认镜头状态。
+    /// 初始化 CinemachineBrain 和默认过渡效果。
     /// </summary>
     private void Awake()
     {
-        ResolveReferences();
-        CacheTargetVirtualCameraFollow();
+        EnsureBindingsArray();
+        ResolveBrain();
         ApplyDefaultBlend();
+    }
 
-        if (initializePrioritiesOnAwake)
+    /// <summary>
+    /// 组件启用时注册按钮点击事件。
+    /// </summary>
+    private void OnEnable()
+    {
+        if (autoRegisterButtonClicks)
         {
-            SwitchToOriginalCamera();
+            RegisterButtonListeners();
         }
     }
 
     /// <summary>
-    /// 每帧读取鼠标滚轮，根据方向切换虚拟镜头。
+    /// 游戏开始时按配置初始化镜头优先级。
     /// </summary>
-    private void Update()
+    private void Start()
     {
-        RestoreTargetVirtualCameraFollowIfReady();
-
-        if (!enableScrollSwitch)
+        if (!initializePrioritiesOnStart)
         {
+            RefreshButtonInteractable();
             return;
         }
 
-        float scrollDelta = ReadScrollDelta();
-        if (Mathf.Abs(scrollDelta) <= scrollThreshold)
+        CinemachineVirtualCamera initialCamera = GetInitialCamera();
+        if (initialCamera != null)
         {
-            return;
-        }
-
-        bool shouldSwitchToTarget = invertScrollDirection ? scrollDelta < 0f : scrollDelta > 0f;
-        if (shouldSwitchToTarget)
-        {
-            SwitchToTargetCamera();
+            SwitchToCamera(initialCamera);
         }
         else
         {
-            SwitchToOriginalCamera();
+            RefreshButtonInteractable();
         }
     }
 
     /// <summary>
-    /// 切换到滚轮向前对应的目标虚拟镜头。
+    /// 组件禁用时注销按钮点击事件，避免重复注册。
     /// </summary>
-    public void SwitchToTargetCamera()
+    private void OnDisable()
     {
-        if (targetVirtualCamera == null)
+        UnregisterButtonListeners();
+    }
+
+    /// <summary>
+    /// 按绑定数组下标切换到对应虚拟镜头，可用于手动绑定 Button OnClick。
+    /// </summary>
+    public void SwitchToCameraByIndex(int index)
+    {
+        if (index < 0 || index >= cameraButtonBindings.Length)
         {
-            Debug.LogWarning($"{nameof(CinemachineScrollZoomController)} needs a target virtual camera.", this);
+            Debug.LogWarning($"{nameof(CinemachineScrollZoomController)} index out of range: {index}", this);
             return;
         }
 
-        SwitchToCamera(targetVirtualCamera);
-        showingTargetCamera = true;
-        restoreTargetFollowWhenBlendEnds = false;
-        ClearTargetVirtualCameraFollow();
-    }
-
-    /// <summary>
-    /// 切回滚轮后退对应的原先虚拟镜头。
-    /// </summary>
-    public void SwitchToOriginalCamera()
-    {
-        if (originalVirtualCamera == null)
+        CameraButtonBinding binding = cameraButtonBindings[index];
+        if (binding == null || !binding.Enabled || binding.VirtualCamera == null)
         {
-            Debug.LogWarning($"{nameof(CinemachineScrollZoomController)} needs an original virtual camera.", this);
+            Debug.LogWarning($"{nameof(CinemachineScrollZoomController)} has an invalid camera binding at index {index}.", this);
             return;
         }
 
-        SwitchToCamera(originalVirtualCamera);
-        showingTargetCamera = false;
-        ScheduleTargetVirtualCameraFollowRestore();
+        if (activeButtonReturnsToDefaultCamera && binding.VirtualCamera == currentVirtualCamera)
+        {
+            SwitchToDefaultCamera();
+            return;
+        }
+
+        SwitchToCamera(binding.VirtualCamera);
     }
 
     /// <summary>
-    /// 查找脚本依赖的 CinemachineBrain 和默认原先镜头。
+    /// 切回默认虚拟镜头。
     /// </summary>
-    private void ResolveReferences()
+    public void SwitchToDefaultCamera()
     {
-        if (originalVirtualCamera == null)
+        CinemachineVirtualCamera targetCamera = GetInitialCamera();
+        if (targetCamera == null)
         {
-            originalVirtualCamera = GetComponent<CinemachineVirtualCamera>();
+            Debug.LogWarning($"{nameof(CinemachineScrollZoomController)} needs a default virtual camera.", this);
+            return;
         }
 
+        SwitchToCamera(targetCamera);
+    }
+
+    /// <summary>
+    /// 切换到指定虚拟镜头。
+    /// </summary>
+    public void SwitchToCamera(CinemachineVirtualCamera targetCamera)
+    {
+        if (targetCamera == null)
+        {
+            Debug.LogWarning($"{nameof(CinemachineScrollZoomController)} cannot switch to a null virtual camera.", this);
+            return;
+        }
+
+        SetAllConfiguredCamerasPriority(inactivePriority);
+        targetCamera.Priority = activePriority;
+        currentVirtualCamera = targetCamera;
+
+        RefreshButtonInteractable();
+    }
+
+    /// <summary>
+    /// 注册所有有效按钮的点击事件。
+    /// </summary>
+    private void RegisterButtonListeners()
+    {
+        UnregisterButtonListeners();
+
+        for (int i = 0; i < cameraButtonBindings.Length; i++)
+        {
+            CameraButtonBinding binding = cameraButtonBindings[i];
+            if (binding == null || binding.Button == null)
+            {
+                continue;
+            }
+
+            int bindingIndex = i;
+            UnityAction action = () => SwitchToCameraByIndex(bindingIndex);
+            binding.Button.onClick.AddListener(action);
+
+            registeredButtons.Add(binding.Button);
+            registeredActions.Add(action);
+        }
+    }
+
+    /// <summary>
+    /// 注销已经自动注册的按钮点击事件。
+    /// </summary>
+    private void UnregisterButtonListeners()
+    {
+        for (int i = 0; i < registeredButtons.Count; i++)
+        {
+            if (registeredButtons[i] != null && registeredActions[i] != null)
+            {
+                registeredButtons[i].onClick.RemoveListener(registeredActions[i]);
+            }
+        }
+
+        registeredButtons.Clear();
+        registeredActions.Clear();
+    }
+
+    /// <summary>
+    /// 获取初始化时应该激活的虚拟镜头。
+    /// </summary>
+    private CinemachineVirtualCamera GetInitialCamera()
+    {
+        if (defaultVirtualCamera != null)
+        {
+            return defaultVirtualCamera;
+        }
+
+        for (int i = 0; i < cameraButtonBindings.Length; i++)
+        {
+            CameraButtonBinding binding = cameraButtonBindings[i];
+            if (binding != null && binding.Enabled && binding.VirtualCamera != null)
+            {
+                return binding.VirtualCamera;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 将所有已配置虚拟镜头设置为指定 Priority。
+    /// </summary>
+    private void SetAllConfiguredCamerasPriority(int priority)
+    {
+        if (defaultVirtualCamera != null)
+        {
+            defaultVirtualCamera.Priority = priority;
+        }
+
+        for (int i = 0; i < cameraButtonBindings.Length; i++)
+        {
+            CameraButtonBinding binding = cameraButtonBindings[i];
+            if (binding != null && binding.VirtualCamera != null)
+            {
+                binding.VirtualCamera.Priority = priority;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 按当前激活镜头刷新按钮可点击状态。
+    /// </summary>
+    private void RefreshButtonInteractable()
+    {
+        if (!manageButtonInteractable)
+        {
+            return;
+        }
+
+        for (int i = 0; i < cameraButtonBindings.Length; i++)
+        {
+            CameraButtonBinding binding = cameraButtonBindings[i];
+            if (binding == null || binding.Button == null)
+            {
+                continue;
+            }
+
+            bool isActiveCameraButton = binding.VirtualCamera == currentVirtualCamera;
+            bool keepActiveButtonClickable = activeButtonReturnsToDefaultCamera && isActiveCameraButton;
+            binding.Button.interactable = binding.Enabled && (keepActiveButtonClickable || !disableActiveButton || !isActiveCameraButton);
+        }
+    }
+
+    /// <summary>
+    /// 查找主摄像机上的 CinemachineBrain。
+    /// </summary>
+    private void ResolveBrain()
+    {
         if (cinemachineBrain != null)
         {
             return;
@@ -176,139 +337,27 @@ public class CinemachineScrollZoomController : MonoBehaviour
     }
 
     /// <summary>
-    /// 缓存目标虚拟镜头原本的 Follow，避免切到目标镜头后清空时丢失引用。
-    /// </summary>
-    private void CacheTargetVirtualCameraFollow()
-    {
-        if (hasCachedTargetVirtualCameraFollow || targetVirtualCamera == null)
-        {
-            return;
-        }
-
-        cachedTargetVirtualCameraFollow = targetVirtualCamera.Follow;
-        hasCachedTargetVirtualCameraFollow = true;
-    }
-
-    /// <summary>
-    /// 切换到目标虚拟镜头后清空它的 Follow，让它停在当前镜头位置参与过渡。
-    /// </summary>
-    private void ClearTargetVirtualCameraFollow()
-    {
-        if (targetVirtualCamera == null)
-        {
-            return;
-        }
-
-        CacheTargetVirtualCameraFollow();
-        targetVirtualCamera.Follow = null;
-    }
-
-    /// <summary>
-    /// 切回原先虚拟镜头后恢复目标虚拟镜头原本的 Follow。
-    /// </summary>
-    private void RestoreTargetVirtualCameraFollow()
-    {
-        if (targetVirtualCamera == null || !hasCachedTargetVirtualCameraFollow)
-        {
-            return;
-        }
-
-        targetVirtualCamera.Follow = cachedTargetVirtualCameraFollow;
-    }
-
-    /// <summary>
-    /// 切回原先虚拟镜头后安排恢复目标虚拟镜头的 Follow，避免混合期间目标镜头继续跟随。
-    /// </summary>
-    private void ScheduleTargetVirtualCameraFollowRestore()
-    {
-        restoreTargetFollowWhenBlendEnds = true;
-        restoreTargetFollowRequestFrame = Time.frameCount;
-    }
-
-    /// <summary>
-    /// 在镜头混合结束后恢复目标虚拟镜头的 Follow。
-    /// </summary>
-    private void RestoreTargetVirtualCameraFollowIfReady()
-    {
-        if (!restoreTargetFollowWhenBlendEnds)
-        {
-            return;
-        }
-
-        if (Time.frameCount <= restoreTargetFollowRequestFrame)
-        {
-            return;
-        }
-
-        if (cinemachineBrain != null && cinemachineBrain.IsBlending)
-        {
-            return;
-        }
-
-        RestoreTargetVirtualCameraFollow();
-        restoreTargetFollowWhenBlendEnds = false;
-    }
-
-    /// <summary>
-    /// 通过 Priority 激活指定虚拟镜头，其余配置镜头降为未激活。
-    /// </summary>
-    private void SwitchToCamera(CinemachineVirtualCamera activeCamera)
-    {
-        if (activeCamera == null)
-        {
-            return;
-        }
-
-        SetCameraPriority(originalVirtualCamera, inactivePriority);
-        SetCameraPriority(targetVirtualCamera, inactivePriority);
-        SetCameraPriority(activeCamera, activePriority);
-    }
-
-    /// <summary>
-    /// 设置单个虚拟镜头的 Priority。
-    /// </summary>
-    private void SetCameraPriority(CinemachineVirtualCamera camera, int priority)
-    {
-        if (camera == null)
-        {
-            return;
-        }
-
-        camera.Priority = priority;
-    }
-
-    /// <summary>
-    /// 读取旧版 Input Manager 的鼠标滚轮增量。
-    /// </summary>
-    private float ReadScrollDelta()
-    {
-#if ENABLE_LEGACY_INPUT_MANAGER
-        return Input.mouseScrollDelta.y;
-#else
-        return 0f;
-#endif
-    }
-
-    /// <summary>
     /// 在 Inspector 修改参数时修正非法范围。
     /// </summary>
     private void OnValidate()
     {
+        EnsureBindingsArray();
         blendTime = Mathf.Max(0f, blendTime);
-        scrollThreshold = Mathf.Max(0f, scrollThreshold);
 
         if (activePriority <= inactivePriority)
         {
             activePriority = inactivePriority + 1;
         }
+    }
 
-        if (Application.isPlaying && showingTargetCamera)
+    /// <summary>
+    /// 保证绑定数组不为空，避免旧组件迁移后运行时报空。
+    /// </summary>
+    private void EnsureBindingsArray()
+    {
+        if (cameraButtonBindings == null)
         {
-            SwitchToTargetCamera();
-        }
-        else if (Application.isPlaying)
-        {
-            SwitchToOriginalCamera();
+            cameraButtonBindings = Array.Empty<CameraButtonBinding>();
         }
     }
 }
