@@ -1,7 +1,9 @@
+using Anchor.GameFlow;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
+using YokiFrame;
 
 /// <summary>
 /// 绑定 UGUI Button，点击后切换当前物体子级 Floating UI 的激活状态。
@@ -22,6 +24,9 @@ public sealed class ButtonPrefabSpawner : MonoBehaviour
     [SerializeField, Tooltip("游戏开始时目标子物体是否保持激活。关闭则默认隐藏。")]
     private bool startActive;
 
+    [SerializeField, Tooltip("当前周是否已经执行过房间行动。锁定后本周内不能再次点击入口按钮。")]
+    private bool lockedForCurrentWeek;
+
     // 缓存按钮点击回调，保证注册和解绑使用同一个委托。
     private UnityAction toggleAction;
 
@@ -33,6 +38,11 @@ public sealed class ButtonPrefabSpawner : MonoBehaviour
 
     // 记录按钮当前期望的开关状态，避免关闭动画期间 activeSelf 仍为 true 导致无法反向打开。
     private bool targetActiveState;
+
+    // 记录锁定发生时的周编号，用于只在进入新周后解锁。
+    private int lockedTotalWeekIndex = -1;
+
+    public bool IsLockedForCurrentWeek => lockedForCurrentWeek;
 
     /// <summary>
     /// 添加组件时尝试自动补齐按钮和 Floating UI 目标。
@@ -61,6 +71,8 @@ public sealed class ButtonPrefabSpawner : MonoBehaviour
     private void OnEnable()
     {
         RegisterButtonClick();
+        RegisterFlowEvents();
+        ApplyWeeklyLockState();
     }
 
     /// <summary>
@@ -69,6 +81,7 @@ public sealed class ButtonPrefabSpawner : MonoBehaviour
     private void OnDisable()
     {
         UnregisterButtonClick();
+        UnregisterFlowEvents();
     }
 
     /// <summary>
@@ -84,6 +97,11 @@ public sealed class ButtonPrefabSpawner : MonoBehaviour
     /// </summary>
     public void ToggleTargetObject()
     {
+        if (lockedForCurrentWeek)
+        {
+            return;
+        }
+
         if (targetObject == null)
         {
             Debug.LogWarning($"{nameof(ButtonPrefabSpawner)} needs a target object.", this);
@@ -98,6 +116,11 @@ public sealed class ButtonPrefabSpawner : MonoBehaviour
     /// </summary>
     public void OpenTargetObject()
     {
+        if (lockedForCurrentWeek)
+        {
+            return;
+        }
+
         SetTargetActive(true);
     }
 
@@ -116,6 +139,11 @@ public sealed class ButtonPrefabSpawner : MonoBehaviour
     {
         ResolveMissingReferences();
 
+        if (lockedForCurrentWeek)
+        {
+            return;
+        }
+
         if (toggleButton == null)
         {
             Debug.LogWarning($"{nameof(ButtonPrefabSpawner)} needs a toggle button.", this);
@@ -124,6 +152,32 @@ public sealed class ButtonPrefabSpawner : MonoBehaviour
         }
 
         toggleButton.onClick.Invoke();
+    }
+
+    /// <summary>
+    /// 锁定本周入口按钮，防止玩家在同一周重复打开同一个 Floating UI。
+    /// </summary>
+    public void LockForCurrentWeek()
+    {
+        SetLockedForCurrentWeek(true);
+    }
+
+    /// <summary>
+    /// 解锁本周入口按钮，通常在新一周开始时调用。
+    /// </summary>
+    public void UnlockForCurrentWeek()
+    {
+        SetLockedForCurrentWeek(false);
+    }
+
+    /// <summary>
+    /// 设置本周锁定状态并同步按钮可点击状态。
+    /// </summary>
+    public void SetLockedForCurrentWeek(bool isLocked)
+    {
+        lockedForCurrentWeek = isLocked;
+        lockedTotalWeekIndex = isLocked ? ResolveCurrentTotalWeekIndex() : -1;
+        ApplyWeeklyLockState();
     }
 
     /// <summary>
@@ -156,6 +210,40 @@ public sealed class ButtonPrefabSpawner : MonoBehaviour
 
         toggleButton.onClick.RemoveListener(toggleAction);
         toggleButton.onClick.AddListener(toggleAction);
+        ApplyWeeklyLockState();
+    }
+
+    /// <summary>
+    /// 注册游戏流程事件，用于新一周开始时自动解锁入口按钮。
+    /// </summary>
+    private void RegisterFlowEvents()
+    {
+        EventKit.Type.UnRegister<GameFlowStateChangedEvent>(OnGameFlowStateChanged);
+        EventKit.Type.Register<GameFlowStateChangedEvent>(OnGameFlowStateChanged);
+    }
+
+    /// <summary>
+    /// 注销游戏流程事件，避免按钮销毁或禁用后残留回调。
+    /// </summary>
+    private void UnregisterFlowEvents()
+    {
+        EventKit.Type.UnRegister<GameFlowStateChangedEvent>(OnGameFlowStateChanged);
+    }
+
+    /// <summary>
+    /// 监听周切换，只在进入新周后重置本周锁定。
+    /// </summary>
+    private void OnGameFlowStateChanged(GameFlowStateChangedEvent flowEvent)
+    {
+        if (!lockedForCurrentWeek || flowEvent.State != GameFlowState.WeekAction || flowEvent.Blackboard == null)
+        {
+            return;
+        }
+
+        if (flowEvent.Blackboard.TotalWeekIndex != lockedTotalWeekIndex)
+        {
+            UnlockForCurrentWeek();
+        }
     }
 
     /// <summary>
@@ -343,6 +431,27 @@ public sealed class ButtonPrefabSpawner : MonoBehaviour
         {
             targetObject = FindFirstFloatingUITarget();
         }
+    }
+
+    /// <summary>
+    /// 根据本周锁定状态同步入口按钮是否可点击。
+    /// </summary>
+    private void ApplyWeeklyLockState()
+    {
+        ResolveMissingReferences();
+
+        if (toggleButton != null)
+        {
+            toggleButton.interactable = !lockedForCurrentWeek;
+        }
+    }
+
+    /// <summary>
+    /// 获取当前游戏流程周编号；没有流程时返回 -1。
+    /// </summary>
+    private static int ResolveCurrentTotalWeekIndex()
+    {
+        return GameFlowRunner.Instance?.Controller?.Blackboard?.TotalWeekIndex ?? -1;
     }
 
     /// <summary>

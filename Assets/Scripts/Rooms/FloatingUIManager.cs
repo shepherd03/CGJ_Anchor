@@ -305,8 +305,9 @@ public sealed class FloatingUIManager : MonoBehaviour
     /// </summary>
     private void OnFirstChildButtonClicked()
     {
-        TrySpendAudioActionPoints(1);
+        bool actionApplied = TrySpendAudioActionPoints(1);
         CloseFloatingUIFromSpawner();
+        LockSpawnerForCurrentWeekIfActionApplied(actionApplied);
     }
 
     /// <summary>
@@ -314,8 +315,9 @@ public sealed class FloatingUIManager : MonoBehaviour
     /// </summary>
     private void OnSecondChildButtonClicked()
     {
-        TrySpendAudioActionPoints(2);
+        bool actionApplied = TrySpendAudioActionPoints(2);
         CloseFloatingUIFromSpawner();
+        LockSpawnerForCurrentWeekIfActionApplied(actionApplied);
     }
 
     /// <summary>
@@ -340,6 +342,24 @@ public sealed class FloatingUIManager : MonoBehaviour
         }
 
         CloseFan();
+    }
+
+    /// <summary>
+    /// 房间行动成功后锁定入口按钮，避免玩家本周重复打开同一个 Floating UI。
+    /// </summary>
+    private void LockSpawnerForCurrentWeekIfActionApplied(bool actionApplied)
+    {
+        if (!actionApplied)
+        {
+            return;
+        }
+
+        CacheMissingButtonPrefabSpawner();
+
+        if (buttonPrefabSpawner != null)
+        {
+            buttonPrefabSpawner.LockForCurrentWeek();
+        }
     }
 
     /// <summary>
