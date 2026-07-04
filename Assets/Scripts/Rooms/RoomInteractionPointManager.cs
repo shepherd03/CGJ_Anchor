@@ -97,7 +97,7 @@ public sealed class RoomInteractionPointManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 重置当前交互点绑定的行动点 UI。
+    /// 兼容旧入口；当前交互点的行动点由 GameFlow 管理，不再重置 Floating UI 内部点数。
     /// </summary>
     public void ResetFloatingUIActionPoints()
     {
@@ -110,7 +110,7 @@ public sealed class RoomInteractionPointManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 尝试消耗当前交互点绑定的行动点。
+    /// 尝试通过当前交互点绑定的 Floating UI 消耗外部行动点。
     /// </summary>
     public bool TrySpendActionPoints(int amount)
     {

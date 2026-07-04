@@ -14,7 +14,7 @@ public sealed class FloatingUIManager : MonoBehaviour
     [SerializeField, Tooltip("扇形 Floating UI 动画控制器。为空时会从当前物体子级查找。")]
     private FloatingUIFan floatingUIFan;
 
-    [SerializeField, Tooltip("行动点 UI 控制器。为空时会从当前物体子级查找。")]
+    [SerializeField, Tooltip("行动点不足反馈控制器。为空时会从当前物体子级查找。")]
     private FloatingUIActionPoints actionPoints;
 
     // 缓存当前 Floating UI 直接子对象上的三个 Button，前两个接入音效房间行动点逻辑，第三个暂时只持有。
@@ -122,31 +122,58 @@ public sealed class FloatingUIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 重置当前交互点绑定的行动点 UI。
+    /// 兼容旧入口；行动点已经改由 GameFlow 管理，Floating UI 不再重置内部点数。
     /// </summary>
     public void ResetActionPoints()
     {
-        if (actionPoints == null)
-        {
-            Debug.LogWarning($"{nameof(FloatingUIManager)} 缺少 {nameof(FloatingUIActionPoints)} 引用：{name}", this);
-            return;
-        }
-
-        actionPoints.ResetActionPoints();
+        // 旧内部行动点已经删除，保留方法避免现有房间交互代码失效。
     }
 
     /// <summary>
-    /// 尝试从当前交互点绑定的行动点 UI 中消耗指定点数。
+    /// 尝试消耗外部 GameFlow 的音效行动点，失败时显示 Floating UI 提示。
     /// </summary>
     public bool TrySpendActionPoints(int amount)
     {
-        if (actionPoints == null)
+        return TrySpendAudioActionPoints(amount);
+    }
+
+    /// <summary>
+    /// 尝试消耗外部 GameFlow 的音效行动点。
+    /// </summary>
+    private bool TrySpendAudioActionPoints(int amount)
+    {
+        amount = Mathf.Max(0, amount);
+        if (amount == 0)
         {
-            Debug.LogWarning($"{nameof(FloatingUIManager)} 缺少 {nameof(FloatingUIActionPoints)} 引用：{name}", this);
+            return true;
+        }
+
+        if (!TryGetGameFlowRunner(out GameFlowRunner runner))
+        {
+            ShowInsufficientActionPointsFeedback();
             return false;
         }
 
-        return actionPoints.TrySpend(amount);
+        bool success = TrySpendAudioActionPoints(runner, amount);
+        if (!success)
+        {
+            ShowInsufficientActionPointsFeedback();
+        }
+
+        return success;
+    }
+
+    /// <summary>
+    /// 按点数调用 GameFlowRunner 上对应的音效行动点消耗方法。
+    /// </summary>
+    private static bool TrySpendAudioActionPoints(GameFlowRunner runner, int amount)
+    {
+        return amount switch
+        {
+            1 => runner.TrySpendAudioOneActionPoint(),
+            2 => runner.TrySpendAudioTwoActionPoints(),
+            _ => runner.TryAllocateAudio(amount)
+        };
     }
 
     /// <summary>
@@ -228,12 +255,7 @@ public sealed class FloatingUIManager : MonoBehaviour
     /// </summary>
     private void TrySpendAudioOneActionPoint()
     {
-        if (!TryGetGameFlowRunner(out GameFlowRunner runner))
-        {
-            return;
-        }
-
-        runner.TrySpendAudioOneActionPoint();
+        TrySpendAudioActionPoints(1);
     }
 
     /// <summary>
@@ -241,12 +263,20 @@ public sealed class FloatingUIManager : MonoBehaviour
     /// </summary>
     private void TrySpendAudioTwoActionPoints()
     {
-        if (!TryGetGameFlowRunner(out GameFlowRunner runner))
-        {
-            return;
-        }
+        TrySpendAudioActionPoints(2);
+    }
 
-        runner.TrySpendAudioTwoActionPoints();
+    /// <summary>
+    /// 显示外部行动点不足反馈。
+    /// </summary>
+    private void ShowInsufficientActionPointsFeedback()
+    {
+        CacheMissingFloatingUIReferences();
+
+        if (actionPoints != null)
+        {
+            actionPoints.ShowInsufficientWarning();
+        }
     }
 
     /// <summary>
