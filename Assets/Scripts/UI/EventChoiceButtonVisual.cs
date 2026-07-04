@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Button), typeof(Image))]
-public sealed class EventChoiceButtonVisual : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public sealed class EventChoiceButtonVisual : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler
 {
     [Header("Floating")]
     [SerializeField, Min(0f)] private float floatAmplitude = 6f;
@@ -14,6 +14,13 @@ public sealed class EventChoiceButtonVisual : MonoBehaviour, IPointerEnterHandle
 
     [Header("Hit Test")]
     [SerializeField, Range(0f, 1f)] private float alphaHitThreshold = 0.1f;
+
+    [Header("Audio")]
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip hoverSound;
+    [SerializeField, Range(0f, 1f)] private float hoverSoundVolume = 1f;
+    [SerializeField] private AudioClip pressedSound;
+    [SerializeField, Range(0f, 1f)] private float pressedSoundVolume = 1f;
 
     private RectTransform rectTransform;
     private Image image;
@@ -63,11 +70,17 @@ public sealed class EventChoiceButtonVisual : MonoBehaviour, IPointerEnterHandle
     public void OnPointerEnter(PointerEventData eventData)
     {
         SetOutline(true);
+        PlayOneShot(hoverSound, hoverSoundVolume);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
         SetOutline(false);
+    }
+
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        PlayOneShot(pressedSound, pressedSoundVolume);
     }
 
     private void CacheReferences()
@@ -80,6 +93,15 @@ public sealed class EventChoiceButtonVisual : MonoBehaviour, IPointerEnterHandle
 
         if (hoverOutline == null)
             hoverOutline = GetComponent<Outline>();
+
+        if (audioSource == null)
+            audioSource = GetComponent<AudioSource>();
+
+        if (audioSource != null)
+        {
+            audioSource.playOnAwake = false;
+            audioSource.loop = false;
+        }
     }
 
     private void ApplyHitTest()
@@ -120,5 +142,11 @@ public sealed class EventChoiceButtonVisual : MonoBehaviour, IPointerEnterHandle
     {
         if (hoverOutline != null)
             hoverOutline.enabled = visible;
+    }
+
+    private void PlayOneShot(AudioClip clip, float volume)
+    {
+        if (audioSource != null && clip != null)
+            audioSource.PlayOneShot(clip, volume);
     }
 }

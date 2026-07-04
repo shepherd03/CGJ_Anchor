@@ -2254,6 +2254,8 @@ MonoBehaviour:
   mLogEvents: 1
   mTotalMonths: 3
   mWeeksPerMonth: 4
+  mMaxWeekStartEvents: 2
+  mGuaranteedEventAfterEmptyWeeks: 1
 --- !u!4 &1081706138
 Transform:
   m_ObjectHideFlags: 0
@@ -2439,6 +2441,8 @@ MonoBehaviour:
   mLogEvents: 1
   mTotalMonths: 3
   mWeeksPerMonth: 4
+  mMaxWeekStartEvents: 2
+  mGuaranteedEventAfterEmptyWeeks: 1
 --- !u!4 &1124876680
 Transform:
   m_ObjectHideFlags: 0
@@ -3395,6 +3399,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e08a8c97474f46e6a04ae7bb7843763, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  type: 2
   floatingUIFan: {fileID: 1711686140}
   actionPoints: {fileID: 1711686138}
   buttonPrefabSpawner: {fileID: 1165708988}
