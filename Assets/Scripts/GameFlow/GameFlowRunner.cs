@@ -172,14 +172,50 @@ namespace Anchor.GameFlow
             return TryAllocateActionPoints(GameDevelopmentTrack.Program, points);
         }
 
+        public bool TrySpendProgramOneActionPoint()
+        {
+            EnsureController();
+            return mController.TrySpendProgramOneActionPoint();
+        }
+
+        public bool TrySpendProgramTwoActionPoints()
+        {
+            EnsureController();
+            return mController.TrySpendProgramTwoActionPoints();
+        }
+
         public bool TryAllocateArt(int points)
         {
             return TryAllocateActionPoints(GameDevelopmentTrack.Art, points);
         }
 
+        public bool TrySpendArtOneActionPoint()
+        {
+            EnsureController();
+            return mController.TrySpendArtOneActionPoint();
+        }
+
+        public bool TrySpendArtTwoActionPoints()
+        {
+            EnsureController();
+            return mController.TrySpendArtTwoActionPoints();
+        }
+
         public bool TryAllocateAudio(int points)
         {
             return TryAllocateActionPoints(GameDevelopmentTrack.Audio, points);
+        }
+
+        public bool TrySpendAudioOneActionPoint()
+        {
+            EnsureController();
+            return mController.TrySpendAudioOneActionPoint();
+        }
+
+        public bool TrySpendAudioTwoActionPoints()
+        {
+            EnsureController();
+            return mController.TrySpendAudioTwoActionPoints();
         }
 
         private void EnsureController()

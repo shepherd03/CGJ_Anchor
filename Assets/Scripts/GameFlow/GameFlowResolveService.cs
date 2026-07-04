@@ -15,15 +15,12 @@ namespace Anchor.GameFlow
             var art = blackboard.GetAllocatedPoints(GameDevelopmentTrack.Art);
             var audio = blackboard.GetAllocatedPoints(GameDevelopmentTrack.Audio);
 
-            var programQuality = program * 8f;
-            var actionVisualDelta = art * 7;
-            var actionAtmosphereDelta = audio * 7;
-            var visualDelta = actionVisualDelta + blackboard.WeeklyVisualDelta;
-            var atmosphereDelta = actionAtmosphereDelta + blackboard.WeeklyAtmosphereDelta;
-            var qualityDelta = (int)Math.Round(programQuality * 0.35f + actionVisualDelta * 0.3f + actionAtmosphereDelta * 0.35f);
-            var bugDelta = (int)Math.Round(program * 1.5f + audio * 0.8f) + blackboard.WeeklyBugDelta;
+            var visualDelta = blackboard.WeeklyVisualDelta;
+            var atmosphereDelta = blackboard.WeeklyAtmosphereDelta;
+            var qualityDelta = 0;
+            var bugDelta = blackboard.WeeklyBugDelta;
             var coinDelta = -(program + art + audio) * 35;
-            var wishlistDelta = (int)Math.Round(qualityDelta * 0.4f);
+            var wishlistDelta = 0;
             wishlistDelta += GetWeeklyWishlistBonus(blackboard, program, art, audio, visualDelta, bugDelta);
 
             var eventId = 0;

@@ -6,7 +6,7 @@ namespace Anchor.GameFlow
     public enum GameDevelopmentTrack
     {
         /// <summary>
-        /// 程序开发投入，主要影响质量分，同时可能增加 Bug。
+        /// 程序开发投入，主要降低 Bug。
         /// </summary>
         Program,
 
@@ -16,7 +16,7 @@ namespace Anchor.GameFlow
         Art,
 
         /// <summary>
-        /// 音效开发投入，主要影响氛围表现和质量分，同时可能增加 Bug。
+        /// 音效开发投入，主要影响氛围表现。
         /// </summary>
         Audio
     }

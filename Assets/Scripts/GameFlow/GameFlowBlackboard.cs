@@ -11,6 +11,7 @@ namespace Anchor.GameFlow
         private readonly List<int> mActiveBuffIds = new();
         private readonly List<int> mTriggeredEventIds = new();
         private readonly CharacterAttributeCatalog mAttributeCatalog;
+        private readonly Random mRandom = new();
 
         public int MonthIndex { get; private set; }
         public int WeekIndex { get; private set; }
@@ -91,9 +92,9 @@ namespace Anchor.GameFlow
         public bool TryAllocate(GameDevelopmentTrack track, int points)
         {
             points = Math.Max(0, points);
-            if (points == 0)
+            if (points != 1 && points != 2)
             {
-                return true;
+                return false;
             }
 
             if (RemainingActionPoints < points)
@@ -104,6 +105,7 @@ namespace Anchor.GameFlow
             PlayerAttributes.Set(CharacterAttributeIds.WeeklyActionPower, RemainingActionPoints - points);
             mActionAllocations.TryGetValue(track, out var current);
             mActionAllocations[track] = current + points;
+            ApplyRoomActionReward(track, points);
             return true;
         }
 
@@ -163,6 +165,66 @@ namespace Anchor.GameFlow
             return (int)PlayerAttributes.Get(attributeId);
         }
 
+        private void ApplyRoomActionReward(GameDevelopmentTrack track, int points)
+        {
+            switch (track)
+            {
+                case GameDevelopmentTrack.Program:
+                    AddClamped(CharacterAttributeIds.Bug, GetRoomActionDelta(
+                        points,
+                        CharacterAttributeIds.ProgramOneActionBugDeltaMin,
+                        CharacterAttributeIds.ProgramOneActionBugDeltaMax,
+                        CharacterAttributeIds.ProgramTwoActionBugDeltaMin,
+                        CharacterAttributeIds.ProgramTwoActionBugDeltaMax));
+                    break;
+                case GameDevelopmentTrack.Art:
+                    PlayerAttributes.Add(CharacterAttributeIds.Visual, GetRoomActionDelta(
+                        points,
+                        CharacterAttributeIds.ArtOneActionVisualDeltaMin,
+                        CharacterAttributeIds.ArtOneActionVisualDeltaMax,
+                        CharacterAttributeIds.ArtTwoActionVisualDeltaMin,
+                        CharacterAttributeIds.ArtTwoActionVisualDeltaMax));
+                    break;
+                case GameDevelopmentTrack.Audio:
+                    PlayerAttributes.Add(CharacterAttributeIds.Atmosphere, GetRoomActionDelta(
+                        points,
+                        CharacterAttributeIds.AudioOneActionAtmosphereDeltaMin,
+                        CharacterAttributeIds.AudioOneActionAtmosphereDeltaMax,
+                        CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMin,
+                        CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMax));
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(track), track, null);
+            }
+        }
+
+        private int GetRoomActionDelta(
+            int points,
+            int onePointMinId,
+            int onePointMaxId,
+            int twoPointMinId,
+            int twoPointMaxId)
+        {
+            return points == 1
+                ? GetRandomInclusive(GetInt(onePointMinId), GetInt(onePointMaxId))
+                : GetRandomInclusive(GetInt(twoPointMinId), GetInt(twoPointMaxId));
+        }
+
+        private int GetRandomInclusive(int minValue, int maxValue)
+        {
+            if (minValue > maxValue)
+            {
+                (minValue, maxValue) = (maxValue, minValue);
+            }
+
+            return mRandom.Next(minValue, maxValue + 1);
+        }
+
+        private void AddClamped(int attributeId, int delta)
+        {
+            PlayerAttributes.Set(attributeId, Math.Max(0, PlayerAttributes.Get(attributeId) + delta));
+        }
+
         private void RequireCoreAttributes()
         {
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.BaseWeeklyActionPower);
@@ -183,6 +245,18 @@ namespace Anchor.GameFlow
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyBugDelta);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyVisualDelta);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyAtmosphereDelta);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramOneActionBugDeltaMin);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramOneActionBugDeltaMax);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramTwoActionBugDeltaMin);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramTwoActionBugDeltaMax);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ArtOneActionVisualDeltaMin);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ArtOneActionVisualDeltaMax);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ArtTwoActionVisualDeltaMin);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ArtTwoActionVisualDeltaMax);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AudioOneActionAtmosphereDeltaMin);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AudioOneActionAtmosphereDeltaMax);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMin);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMax);
         }
     }
 }

@@ -120,6 +120,36 @@ namespace Anchor.GameFlow
             return Blackboard.RemainingActionPoints != before || points <= 0;
         }
 
+        public bool TrySpendProgramOneActionPoint()
+        {
+            return TryAllocateActionPoints(GameDevelopmentTrack.Program, 1);
+        }
+
+        public bool TrySpendProgramTwoActionPoints()
+        {
+            return TryAllocateActionPoints(GameDevelopmentTrack.Program, 2);
+        }
+
+        public bool TrySpendArtOneActionPoint()
+        {
+            return TryAllocateActionPoints(GameDevelopmentTrack.Art, 1);
+        }
+
+        public bool TrySpendArtTwoActionPoints()
+        {
+            return TryAllocateActionPoints(GameDevelopmentTrack.Art, 2);
+        }
+
+        public bool TrySpendAudioOneActionPoint()
+        {
+            return TryAllocateActionPoints(GameDevelopmentTrack.Audio, 1);
+        }
+
+        public bool TrySpendAudioTwoActionPoints()
+        {
+            return TryAllocateActionPoints(GameDevelopmentTrack.Audio, 2);
+        }
+
         public void FinishWeekAction()
         {
             mFsm.SendMessage(new FinishWeekActionMessage());

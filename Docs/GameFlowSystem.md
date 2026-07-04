@@ -70,9 +70,12 @@ Log Events = true
 ```csharp
 runner.StartNewGame();
 runner.ConfirmBudgetShop();
-runner.TryAllocateProgram(1);
-runner.TryAllocateArt(1);
-runner.TryAllocateAudio(1);
+runner.TrySpendProgramOneActionPoint();
+runner.TrySpendProgramTwoActionPoints();
+runner.TrySpendArtOneActionPoint();
+runner.TrySpendArtTwoActionPoints();
+runner.TrySpendAudioOneActionPoint();
+runner.TrySpendAudioTwoActionPoints();
 runner.FinishWeekAction();
 runner.ContinueFlow();
 ```
@@ -85,6 +88,12 @@ runner.ContinueFlow();
 程序房间投点按钮         TryAllocateProgram
 美术房间投点按钮         TryAllocateArt
 音效房间投点按钮         TryAllocateAudio
+程序房间 1AP 按钮       TrySpendProgramOneActionPoint
+程序房间 2AP 按钮       TrySpendProgramTwoActionPoints
+美术房间 1AP 按钮       TrySpendArtOneActionPoint
+美术房间 2AP 按钮       TrySpendArtTwoActionPoints
+音效房间 1AP 按钮       TrySpendAudioOneActionPoint
+音效房间 2AP 按钮       TrySpendAudioTwoActionPoints
 本周结束按钮             FinishWeekAction
 周结算/月结算继续按钮    ContinueFlow
 ```
@@ -335,12 +344,23 @@ WeekCount
 GameFlowResolveService.cs
 ```
 
-当前周结算会根据投点方向计算：
+当前行动按钮会根据投点方向即时修改属性：
 
 ```text
-Program   影响质量，也会增加 Bug
-Art       影响画面和质量
-Audio     影响氛围和质量，也会增加 Bug
+Program   降低 Bug
+Art       提高画面
+Audio     提高氛围
+```
+
+当前房间按钮即时收益：
+
+```text
+Program 1AP   Bug -4 到 -2
+Program 2AP   Bug -9 到 -6
+Art 1AP       画面 +5 到 +7
+Art 2AP       画面 +13 到 +15
+Audio 1AP     氛围 +5 到 +7
+Audio 2AP     氛围 +12 到 +15
 ```
 
 当前月结算会根据：

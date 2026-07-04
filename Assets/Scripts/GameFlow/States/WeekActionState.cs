@@ -21,9 +21,9 @@ namespace Anchor.GameFlow.States
             var points = mBlack.RemainingActionPoints;
             if (points > 0)
             {
-                mBlack.TryAllocate(GameDevelopmentTrack.Program, points / 3);
-                mBlack.TryAllocate(GameDevelopmentTrack.Art, points / 3);
-                mBlack.TryAllocate(GameDevelopmentTrack.Audio, points - points / 3 * 2);
+                TryAutoAllocate(GameDevelopmentTrack.Program);
+                TryAutoAllocate(GameDevelopmentTrack.Art);
+                TryAutoAllocate(GameDevelopmentTrack.Audio);
             }
 
             mFSM.Change(GameFlowState.WeekResolve);
@@ -40,6 +40,16 @@ namespace Anchor.GameFlow.States
                     mFSM.Change(GameFlowState.WeekResolve);
                     break;
             }
+        }
+
+        private void TryAutoAllocate(GameDevelopmentTrack track)
+        {
+            if (mBlack.RemainingActionPoints <= 0)
+            {
+                return;
+            }
+
+            mBlack.TryAllocate(track, mBlack.RemainingActionPoints >= 2 ? 2 : 1);
         }
     }
 }

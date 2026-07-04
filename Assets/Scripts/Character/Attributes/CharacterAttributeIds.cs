@@ -94,5 +94,41 @@ namespace Anchor.Character.Attributes
 
         /// <summary>每周结算时应用的氛围值变化量。</summary>
         public const int WeeklyAtmosphereDelta = 1030;
+
+        /// <summary>程序房间消耗 1 点行动点时，Bug 变化随机下限。</summary>
+        public const int ProgramOneActionBugDeltaMin = 1031;
+
+        /// <summary>程序房间消耗 1 点行动点时，Bug 变化随机上限。</summary>
+        public const int ProgramOneActionBugDeltaMax = 1032;
+
+        /// <summary>程序房间消耗 2 点行动点时，Bug 变化随机下限。</summary>
+        public const int ProgramTwoActionBugDeltaMin = 1033;
+
+        /// <summary>程序房间消耗 2 点行动点时，Bug 变化随机上限。</summary>
+        public const int ProgramTwoActionBugDeltaMax = 1034;
+
+        /// <summary>美术房间消耗 1 点行动点时，画面变化随机下限。</summary>
+        public const int ArtOneActionVisualDeltaMin = 1035;
+
+        /// <summary>美术房间消耗 1 点行动点时，画面变化随机上限。</summary>
+        public const int ArtOneActionVisualDeltaMax = 1036;
+
+        /// <summary>美术房间消耗 2 点行动点时，画面变化随机下限。</summary>
+        public const int ArtTwoActionVisualDeltaMin = 1037;
+
+        /// <summary>美术房间消耗 2 点行动点时，画面变化随机上限。</summary>
+        public const int ArtTwoActionVisualDeltaMax = 1038;
+
+        /// <summary>音效房间消耗 1 点行动点时，氛围变化随机下限。</summary>
+        public const int AudioOneActionAtmosphereDeltaMin = 1039;
+
+        /// <summary>音效房间消耗 1 点行动点时，氛围变化随机上限。</summary>
+        public const int AudioOneActionAtmosphereDeltaMax = 1040;
+
+        /// <summary>音效房间消耗 2 点行动点时，氛围变化随机下限。</summary>
+        public const int AudioTwoActionAtmosphereDeltaMin = 1041;
+
+        /// <summary>音效房间消耗 2 点行动点时，氛围变化随机上限。</summary>
+        public const int AudioTwoActionAtmosphereDeltaMax = 1042;
     }
 }
