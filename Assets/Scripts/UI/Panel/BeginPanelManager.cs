@@ -161,6 +161,17 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
+        /// 打开 BeginPanel。
+        /// </summary>
+        public void Open()
+        {
+            if (!gameObject.activeSelf)
+            {
+                gameObject.SetActive(true);
+            }
+        }
+
+        /// <summary>
         /// 关闭 BeginPanel。
         /// </summary>
         public void Close()

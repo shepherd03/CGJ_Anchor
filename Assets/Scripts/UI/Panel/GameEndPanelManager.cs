@@ -7,7 +7,7 @@ namespace Anchor.UI.Panel
     public sealed class GameEndPanelManager : PanelManagerSingleton<GameEndPanelManager>
     {
         [Header("Button")]
-        [SerializeField, Tooltip("点击后关闭当前 GameEndPanel 的按钮。")]
+        [SerializeField, Tooltip("点击后回到 BeginPanel 的按钮。")]
         private Button closeButton;
 
         /// <summary>
@@ -46,7 +46,15 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 给关闭按钮注册点击事件。
+        /// 结束面板按钮点击后交给流程 UI 编排器返回开始界面。
+        /// </summary>
+        private void OnReturnToBeginButtonClicked()
+        {
+            GameFlowPanelCoordinator.GetOrCreate().ReturnToBeginPanel();
+        }
+
+        /// <summary>
+        /// 给返回开始界面按钮注册点击事件。
         /// </summary>
         private void RegisterCloseButtonClick()
         {
@@ -57,11 +65,12 @@ namespace Anchor.UI.Panel
             }
 
             closeButton.onClick.RemoveListener(Close);
-            closeButton.onClick.AddListener(Close);
+            closeButton.onClick.RemoveListener(OnReturnToBeginButtonClicked);
+            closeButton.onClick.AddListener(OnReturnToBeginButtonClicked);
         }
 
         /// <summary>
-        /// 移除关闭按钮点击事件。
+        /// 移除返回开始界面按钮点击事件。
         /// </summary>
         private void UnregisterCloseButtonClick()
         {
@@ -71,6 +80,7 @@ namespace Anchor.UI.Panel
             }
 
             closeButton.onClick.RemoveListener(Close);
+            closeButton.onClick.RemoveListener(OnReturnToBeginButtonClicked);
         }
 
         /// <summary>

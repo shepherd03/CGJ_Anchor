@@ -193,6 +193,16 @@ namespace Anchor.GameFlow
             mController?.Continue();
         }
 
+        /// <summary>
+        /// 重置当前游戏流程到开局数据，并停止 FSM，等待 BeginPanel 再次开始。
+        /// </summary>
+        public void ResetCurrentGameFlowForBeginPanel()
+        {
+            EnsureController();
+            mController.StartNewGame();
+            mController.Stop();
+        }
+
         public bool TryAllocateActionPoints(GameDevelopmentTrack track, int points)
         {
             EnsureController();

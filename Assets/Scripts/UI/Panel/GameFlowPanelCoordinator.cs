@@ -90,6 +90,21 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
+        /// 结束后回到 BeginPanel，并重置、停住当前游戏流程，等待开始按钮重新开局。
+        /// </summary>
+        public void ReturnToBeginPanel()
+        {
+            StopFlowRoutine();
+            CloseBuffWindow();
+            CloseEventPanel();
+            CloseMainPanel();
+            CloseWeekPanel();
+            CloseGameEndPanel();
+            ResetCurrentGameFlowForBeginPanel();
+            OpenBeginPanel();
+        }
+
+        /// <summary>
         /// 兼容外部手动推进入口；正式 UI 流程由各面板关闭回调推进。
         /// </summary>
         public void NextStep()
@@ -391,6 +406,22 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
+        /// 打开开始页面。
+        /// </summary>
+        private void OpenBeginPanel()
+        {
+            BeginPanelManager beginPanelManager = BeginPanelManager.Instance;
+
+            if (beginPanelManager == null)
+            {
+                Debug.LogWarning($"{nameof(GameFlowPanelCoordinator)} cannot find {nameof(BeginPanelManager)} in the scene.", this);
+                return;
+            }
+
+            beginPanelManager.Open();
+        }
+
+        /// <summary>
         /// 打开月初 BuffWindow。
         /// </summary>
         private void OpenBuffWindow()
@@ -550,6 +581,19 @@ namespace Anchor.UI.Panel
 
             Debug.LogWarning($"{nameof(GameFlowPanelCoordinator)} cannot find {nameof(GameFlowRunner)} instance.", this);
             return false;
+        }
+
+        /// <summary>
+        /// 重置当前游戏流程，让 BeginPanel 打开时看到开局状态，并等待下一次 StartGame。
+        /// </summary>
+        private static void ResetCurrentGameFlowForBeginPanel()
+        {
+            GameFlowRunner runner = GameFlowRunner.Instance;
+
+            if (runner != null)
+            {
+                runner.ResetCurrentGameFlowForBeginPanel();
+            }
         }
 
         /// <summary>
