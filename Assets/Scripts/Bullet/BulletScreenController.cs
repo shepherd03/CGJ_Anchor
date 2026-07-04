@@ -20,10 +20,10 @@ public class BulletScreenController : MonoBehaviour
     [SerializeField, Tooltip("启用时是否自动持续生成弹幕。")]
     private bool playOnEnable = true;
 
-    [SerializeField, Min(0.05f), Tooltip("两条自动弹幕之间的最短间隔。")]
+    [SerializeField, Tooltip("两条自动弹幕之间的最短间隔。")]
     private float minSpawnInterval = 0.45f;
 
-    [SerializeField, Min(0.05f), Tooltip("两条自动弹幕之间的最长间隔。")]
+    [SerializeField, Tooltip("两条自动弹幕之间的最长间隔。")]
     private float maxSpawnInterval = 1.2f;
 
     [Header("Pool")]
@@ -109,7 +109,7 @@ public class BulletScreenController : MonoBehaviour
     /// </summary>
     private void Awake()
     {
-        ClampSettings();
+        // ClampSettings();
         EnsureRoot();
 
         if (prewarmPoolOnAwake)
@@ -504,10 +504,10 @@ public class BulletScreenController : MonoBehaviour
     /// <summary>
     /// Inspector 改值时限制参数合法范围。
     /// </summary>
-    private void OnValidate()
-    {
-        ClampSettings();
-    }
+    // private void OnValidate()
+    // {
+    //     ClampSettings();
+    // }
 
     /// <summary>
     /// 统一修正弹幕生成和移动参数，避免运行时出现非法区间。
