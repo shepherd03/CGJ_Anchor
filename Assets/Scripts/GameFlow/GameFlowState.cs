@@ -41,7 +41,7 @@ namespace Anchor.GameFlow
         WeekResolve,
 
         /// <summary>
-        /// 月结算阶段，根据当前月份结算类型计算愿望单、金币和其他结果。
+        /// 月结算阶段，根据当前月份结算类型计算愿望单和其他非金币结果。
         /// </summary>
         MonthSettlement,
 

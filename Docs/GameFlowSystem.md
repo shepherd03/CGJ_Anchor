@@ -420,7 +420,7 @@ QualityScore（由画面、氛围、Bug 动态计算）
 MonthSettlementType
 ```
 
-计算愿望单和金币变化。
+计算愿望单变化；月结算不直接修改金币。
 
 ### 添加新玩家属性
 

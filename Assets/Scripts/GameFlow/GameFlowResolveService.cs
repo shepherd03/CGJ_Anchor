@@ -59,9 +59,9 @@ namespace Anchor.GameFlow
             var rawWishlistDelta = blackboard.WeeklyWishlistGrowth + (int)Math.Round(qualityFactor * GetWishlistMultiplier(month.SettlementType));
             var wishlistGrowthMultiplier = Math.Max(0f, 1f + blackboard.WishlistGrowthPercentBonus / 100f);
             var wishlistDelta = (int)Math.Round(rawWishlistDelta * wishlistGrowthMultiplier);
-            var coinDelta = GetCoinDelta(month.SettlementType, wishlistDelta, blackboard.BugScore);
+            var coinDelta = 0;
             var bugDelta = month.SettlementType == MonthSettlementType.ClosedBeta ? -Math.Min(blackboard.BugScore, 8) : 0;
-            var summary = $"{month.DisplayName}{GetSettlementTypeName(month.SettlementType)}：愿望单 +{wishlistDelta}，金币 {coinDelta:+0;-0;0}";
+            var summary = $"{month.DisplayName}{GetSettlementTypeName(month.SettlementType)}：愿望单 +{wishlistDelta}";
 
             return new MonthSettlementResult(
                 blackboard.MonthIndex,
@@ -119,20 +119,6 @@ namespace Anchor.GameFlow
                 MonthSettlementType.FinalRelease => "正式发布",
                 _ => type.ToString()
             };
-        }
-
-        private static int GetCoinDelta(MonthSettlementType type, int wishlistDelta, int bugScore)
-        {
-            var baseIncome = type switch
-            {
-                MonthSettlementType.PvRelease => 120,
-                MonthSettlementType.ClosedBeta => 220,
-                MonthSettlementType.PublicRelease => 360,
-                MonthSettlementType.FinalRelease => 520,
-                _ => 0
-            };
-
-            return baseIncome + wishlistDelta / 4 - (int)Math.Round(bugScore * 5f);
         }
 
         private static int GetWeeklyWishlistBonus(

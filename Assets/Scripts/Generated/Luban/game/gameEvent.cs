@@ -19,6 +19,8 @@ public sealed partial class gameEvent : Luban.BeanBase
         Id = _buf.ReadInt();
         Title = _buf.ReadString();
         Content = _buf.ReadString();
+        YesText = _buf.ReadString();
+        NoText = _buf.ReadString();
         {int __n0 = _buf.ReadSize(); YesEffects = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} YesEffects[__index0] = __e0;}}
         {int __n0 = _buf.ReadSize(); NoEffects = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} NoEffects[__index0] = __e0;}}
         {int __n0 = _buf.ReadSize(); TriggerGreaterOrEqualConditions = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} TriggerGreaterOrEqualConditions[__index0] = __e0;}}
@@ -43,6 +45,14 @@ public sealed partial class gameEvent : Luban.BeanBase
     /// 事件内容
     /// </summary>
     public readonly string Content;
+    /// <summary>
+    /// 选择文案
+    /// </summary>
+    public readonly string YesText;
+    /// <summary>
+    /// 不选择文案
+    /// </summary>
+    public readonly string NoText;
     /// <summary>
     /// 选择Y后的属性修改，格式[[属性ID,值]]
     /// </summary>
@@ -77,6 +87,8 @@ public sealed partial class gameEvent : Luban.BeanBase
         + "id:" + Id + ","
         + "title:" + Title + ","
         + "content:" + Content + ","
+        + "yesText:" + YesText + ","
+        + "noText:" + NoText + ","
         + "yesEffects:" + Luban.StringUtil.CollectionToString(YesEffects) + ","
         + "noEffects:" + Luban.StringUtil.CollectionToString(NoEffects) + ","
         + "triggerGreaterOrEqualConditions:" + Luban.StringUtil.CollectionToString(TriggerGreaterOrEqualConditions) + ","
