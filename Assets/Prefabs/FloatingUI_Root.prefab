@@ -246,6 +246,9 @@ MonoBehaviour:
     releasedHoldDuration: 0.08
     ease: 6
   syncBaseScaleFromCurrentBeforeHover: 1
+  audioSource: {fileID: 0}
+  hoverSound: {fileID: 8300000, guid: 7db2f1dfd3031734698bc1d2895df11d, type: 3}
+  pressedSound: {fileID: 8300000, guid: bf8c6cdc63200b94fa7adc1c4172e66b, type: 3}
   disableBrightShadowEffectsWhenSpritePresent: 1
   preserveSpriteOriginalColor: 1
   brightShadowLuminanceThreshold: 0.6
@@ -907,7 +910,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3907482799763013681}
-  m_Enabled: 0
+  m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -1240,7 +1243,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
-  m_PresetInfoIsWorld: 0
+  m_PresetInfoIsWorld: 1
 --- !u!114 &3295353131646429120
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1867,6 +1870,9 @@ MonoBehaviour:
     releasedHoldDuration: 0.08
     ease: 6
   syncBaseScaleFromCurrentBeforeHover: 1
+  audioSource: {fileID: 0}
+  hoverSound: {fileID: 8300000, guid: ba00a44b8e75add438ed32165935967d, type: 3}
+  pressedSound: {fileID: 8300000, guid: bf8c6cdc63200b94fa7adc1c4172e66b, type: 3}
   disableBrightShadowEffectsWhenSpritePresent: 1
   preserveSpriteOriginalColor: 1
   brightShadowLuminanceThreshold: 0.6
@@ -1886,7 +1892,7 @@ MonoBehaviour:
   syncFromCard2: 0
   syncCardName: Card_2
   syncSource: {fileID: 0}
-  effectEnabled: 1
+  effectEnabled: 0
   coreColor: {r: 0, g: 0.05983591, b: 1, a: 1}
   tipColor: {r: 0.058823526, g: 0.69520277, b: 1, a: 1}
   tailDirection: {x: 0, y: 1}
@@ -2847,7 +2853,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8358270299514045665}
-  m_Enabled: 0
+  m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -3128,6 +3134,9 @@ MonoBehaviour:
     releasedHoldDuration: 0.08
     ease: 6
   syncBaseScaleFromCurrentBeforeHover: 1
+  audioSource: {fileID: 0}
+  hoverSound: {fileID: 8300000, guid: 7db2f1dfd3031734698bc1d2895df11d, type: 3}
+  pressedSound: {fileID: 8300000, guid: bf8c6cdc63200b94fa7adc1c4172e66b, type: 3}
   disableBrightShadowEffectsWhenSpritePresent: 1
   preserveSpriteOriginalColor: 1
   brightShadowLuminanceThreshold: 0.6
@@ -3152,10 +3161,10 @@ MonoBehaviour:
   tipColor: {r: 0.058823526, g: 0.69520277, b: 1, a: 1}
   tailDirection: {x: 0, y: 1}
   directionInWorldSpace: 0
-  outlineWidth: 10.36
-  tailLength: 1.34
+  outlineWidth: 6.05
+  tailLength: 1.1
   noiseScale: 0.21
-  noiseAmount: 0.397
+  noiseAmount: 1
   flowSpeed: 2.4
   alphaCutoff: 0.083
   hoverResponseEnabled: 1

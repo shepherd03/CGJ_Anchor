@@ -172,6 +172,13 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
     [SerializeField] private TransitionSettings transitions = new TransitionSettings();
     [SerializeField] private bool syncBaseScaleFromCurrentBeforeHover = true;
 
+    [Header("Audio")]
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField, Tooltip("鼠标悬浮在这张 Card 上时播放。")]
+    private AudioClip hoverSound;
+    [SerializeField, Tooltip("按下这张 Card 时播放。")]
+    private AudioClip pressedSound;
+
     [Header("Sprite Background")]
     [SerializeField] private bool disableBrightShadowEffectsWhenSpritePresent = true;
     [SerializeField] private bool preserveSpriteOriginalColor = true;
@@ -241,6 +248,8 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
         if (!CanInteract())
             return;
 
+        PlayOneShot(hoverSound);
+
         SyncBaseScaleFromCurrentIfNeeded();
 
         if (flameEffect != null)
@@ -270,6 +279,8 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
 
         if (!CanInteract())
             return;
+
+        PlayOneShot(pressedSound);
 
         TransitionTo(VisualState.Pressed);
     }
@@ -340,6 +351,19 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
         if (flameEffect == null)
             flameEffect = GetComponent<ScreenSpaceEdgeFlame>();
 
+        if (audioSource == null)
+            audioSource = GetComponent<AudioSource>();
+
+        if (audioSource == null && Application.isPlaying)
+            audioSource = gameObject.AddComponent<AudioSource>();
+
+        if (audioSource != null)
+        {
+            audioSource.playOnAwake = false;
+            audioSource.loop = false;
+            audioSource.spatialBlend = 0f;
+        }
+
         if (frameOverlaySlot == null)
             frameOverlaySlot = FindChildImage("FrameOverlaySlot");
 
@@ -368,6 +392,15 @@ public sealed class FloatingUIButtonVisual : MonoBehaviour, IPointerEnterHandler
     {
         Transform child = transform.Find(childName);
         return child != null ? child.GetComponent<Image>() : null;
+    }
+
+    private void PlayOneShot(AudioClip clip)
+    {
+        if (audioSource == null)
+            CacheReferences();
+
+        if (audioSource != null && clip != null)
+            audioSource.PlayOneShot(clip);
     }
 
     private void CaptureAuthoredSprites()
