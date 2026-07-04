@@ -28,10 +28,11 @@ namespace Anchor.GameFlow
         public int WeeklyWishlistGrowth => GetInt(CharacterAttributeIds.WeeklyWishlistGrowth);
         public int Coins => GetInt(CharacterAttributeIds.Coins);
         public int WishlistCount => GetInt(CharacterAttributeIds.Wishlist);
-        public int QualityScore => PlayerAttributes.Get(CharacterAttributeIds.Quality);
         public int BugScore => PlayerAttributes.Get(CharacterAttributeIds.Bug);
         public int VisualScore => PlayerAttributes.Get(CharacterAttributeIds.Visual);
         public int AtmosphereScore => PlayerAttributes.Get(CharacterAttributeIds.Atmosphere);
+        public int BaseQualityScore => CalculateBaseQualityScore(VisualScore, AtmosphereScore);
+        public int QualityScore => CalculateQualityScore(VisualScore, AtmosphereScore, BugScore);
         public int ProgramRoomOneActionWishlistReward => GetInt(CharacterAttributeIds.ProgramRoomOneActionReward);
         public int ProgramRoomTwoActionWishlistReward => GetInt(CharacterAttributeIds.ProgramRoomTwoActionReward);
         public int ArtRoomOneActionWishlistReward => GetInt(CharacterAttributeIds.ArtRoomOneActionReward);
@@ -131,7 +132,6 @@ namespace Anchor.GameFlow
             LastWeekResult = result;
             PlayerAttributes.Add(CharacterAttributeIds.Visual, result.VisualDelta);
             PlayerAttributes.Add(CharacterAttributeIds.Atmosphere, result.AtmosphereDelta);
-            PlayerAttributes.Add(CharacterAttributeIds.Quality, result.QualityDelta);
             PlayerAttributes.Set(CharacterAttributeIds.Bug, Math.Max(0, BugScore + result.BugDelta));
             PlayerAttributes.Add(CharacterAttributeIds.Coins, result.CoinDelta);
             PlayerAttributes.Set(CharacterAttributeIds.Wishlist, Math.Max(0, WishlistCount + result.WishlistDelta));
@@ -149,7 +149,6 @@ namespace Anchor.GameFlow
             LastMonthResult = result;
             PlayerAttributes.Add(CharacterAttributeIds.Coins, result.CoinDelta);
             PlayerAttributes.Set(CharacterAttributeIds.Wishlist, Math.Max(0, WishlistCount + result.WishlistDelta));
-            PlayerAttributes.Add(CharacterAttributeIds.Quality, result.QualityDelta);
             PlayerAttributes.Set(CharacterAttributeIds.Bug, Math.Max(0, BugScore + result.BugDelta));
         }
 
@@ -192,6 +191,23 @@ namespace Anchor.GameFlow
             return true;
         }
 
+        public bool CanReadAttribute(int attributeId)
+        {
+            return attributeId == CharacterAttributeIds.Quality || mAttributeCatalog.Contains(attributeId);
+        }
+
+        public bool CanWriteAttribute(int attributeId)
+        {
+            return attributeId != CharacterAttributeIds.Quality && mAttributeCatalog.Contains(attributeId);
+        }
+
+        public int GetAttributeValue(int attributeId)
+        {
+            return attributeId == CharacterAttributeIds.Quality
+                ? QualityScore
+                : PlayerAttributes.Get(attributeId);
+        }
+
         public void RecordTriggeredEvent(int eventId)
         {
             if (eventId > 0)
@@ -203,6 +219,19 @@ namespace Anchor.GameFlow
         private int GetInt(int attributeId)
         {
             return (int)PlayerAttributes.Get(attributeId);
+        }
+
+        public static int CalculateBaseQualityScore(int visualScore, int atmosphereScore)
+        {
+            return (int)Math.Round(Math.Max(0d, (visualScore + atmosphereScore) * 0.5d));
+        }
+
+        public static int CalculateQualityScore(int visualScore, int atmosphereScore, int bugScore)
+        {
+            var baseQuality = Math.Max(0d, (visualScore + atmosphereScore) * 0.5d);
+            var normalizedBug = Math.Max(0, bugScore);
+            var bugMultiplier = Math.Max(0d, Math.Min(1d, 1d - normalizedBug / 100d));
+            return (int)Math.Round(baseQuality * bugMultiplier);
         }
 
         private void RollWeekStartWishlistMultiplier()
@@ -309,7 +338,6 @@ namespace Anchor.GameFlow
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Atmosphere);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Coins);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Wishlist);
-            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Quality);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramRoomOneActionReward);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramRoomTwoActionReward);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ArtRoomOneActionReward);

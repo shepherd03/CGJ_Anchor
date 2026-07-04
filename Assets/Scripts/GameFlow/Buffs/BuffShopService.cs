@@ -236,9 +236,9 @@ namespace Anchor.GameFlow.Buffs
                     return false;
                 }
 
-                if (!blackboard.AttributeCatalog.Contains(pair[0]))
+                if (!blackboard.CanWriteAttribute(pair[0]))
                 {
-                    message = $"Buff {buff.Id} effect item {i} uses unknown attribute id: {pair[0]}.";
+                    message = $"Buff {buff.Id} effect item {i} uses unknown writable attribute id: {pair[0]}.";
                     return false;
                 }
             }

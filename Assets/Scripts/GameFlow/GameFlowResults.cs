@@ -6,7 +6,6 @@ namespace Anchor.GameFlow
         public readonly int WeekIndex;
         public readonly int VisualDelta;
         public readonly int AtmosphereDelta;
-        public readonly int QualityDelta;
         public readonly int BugDelta;
         public readonly int CoinDelta;
         public readonly int WishlistDelta;
@@ -18,7 +17,6 @@ namespace Anchor.GameFlow
             int weekIndex,
             int visualDelta,
             int atmosphereDelta,
-            int qualityDelta,
             int bugDelta,
             int coinDelta,
             int wishlistDelta,
@@ -29,7 +27,6 @@ namespace Anchor.GameFlow
             WeekIndex = weekIndex;
             VisualDelta = visualDelta;
             AtmosphereDelta = atmosphereDelta;
-            QualityDelta = qualityDelta;
             BugDelta = bugDelta;
             CoinDelta = coinDelta;
             WishlistDelta = wishlistDelta;
@@ -44,7 +41,6 @@ namespace Anchor.GameFlow
         public readonly MonthSettlementType SettlementType;
         public readonly int WishlistDelta;
         public readonly int CoinDelta;
-        public readonly int QualityDelta;
         public readonly int BugDelta;
         public readonly string Summary;
 
@@ -53,7 +49,6 @@ namespace Anchor.GameFlow
             MonthSettlementType settlementType,
             int wishlistDelta,
             int coinDelta,
-            int qualityDelta,
             int bugDelta,
             string summary)
         {
@@ -61,7 +56,6 @@ namespace Anchor.GameFlow
             SettlementType = settlementType;
             WishlistDelta = wishlistDelta;
             CoinDelta = coinDelta;
-            QualityDelta = qualityDelta;
             BugDelta = bugDelta;
             Summary = summary;
         }

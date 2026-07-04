@@ -6,6 +6,8 @@ using BuffRow = Anchor.Config.game.buff;
 using EventRow = Anchor.Config.game.gameEvent;
 using PlayerAttributeRow = Anchor.Config.game.playerAttribute;
 
+const int DynamicQualityAttributeId = 1010;
+
 var root = FindProjectRoot(AppContext.BaseDirectory);
 var dataDir = Path.Combine(root, "Assets", "Resources", "Config", "Luban", "Bin");
 var errors = new List<string>();
@@ -16,7 +18,8 @@ output.AppendLine($"DataDir: {dataDir}");
 
 var tables = new Tables(LoadTableBytes);
 var playerAttributeIds = ValidatePlayerAttributes(tables.TbplayerAttribute.DataList, errors, output);
-ValidateEvents(tables.TbgameEvent.DataList, playerAttributeIds, errors, output);
+var readableAttributeIds = new HashSet<int>(playerAttributeIds) { DynamicQualityAttributeId };
+ValidateEvents(tables.TbgameEvent.DataList, playerAttributeIds, readableAttributeIds, errors, output);
 ValidateBuffs(tables.Tbbuff.DataList, playerAttributeIds, errors, output);
 
 if (errors.Count > 0)
@@ -47,7 +50,8 @@ ByteBuf LoadTableBytes(string fileName)
 
 static void ValidateEvents(
     IReadOnlyList<EventRow> rows,
-    ISet<int> playerAttributeIds,
+    ISet<int> writableAttributeIds,
+    ISet<int> readableAttributeIds,
     ICollection<string> errors,
     StringBuilder output)
 {
@@ -62,10 +66,10 @@ static void ValidateEvents(
         CheckRequired("Event", row.Id, "title", row.Title, errors);
         CheckRequired("Event", row.Id, "content", row.Content, errors);
         CheckRange("Event", row.Id, "ratio", row.Ratio, 0f, 1f, errors);
-        CheckAttributePairs("Event", row.Id, "yesEffects", row.YesEffects, playerAttributeIds, errors);
-        CheckAttributePairs("Event", row.Id, "noEffects", row.NoEffects, playerAttributeIds, errors);
-        CheckAttributePairs("Event", row.Id, "triggerGreaterOrEqualConditions", row.TriggerGreaterOrEqualConditions, playerAttributeIds, errors);
-        CheckAttributePairs("Event", row.Id, "triggerLessThanConditions", row.TriggerLessThanConditions, playerAttributeIds, errors);
+        CheckAttributePairs("Event", row.Id, "yesEffects", row.YesEffects, writableAttributeIds, "writable player attribute", errors);
+        CheckAttributePairs("Event", row.Id, "noEffects", row.NoEffects, writableAttributeIds, "writable player attribute", errors);
+        CheckAttributePairs("Event", row.Id, "triggerGreaterOrEqualConditions", row.TriggerGreaterOrEqualConditions, readableAttributeIds, "readable attribute", errors);
+        CheckAttributePairs("Event", row.Id, "triggerLessThanConditions", row.TriggerLessThanConditions, readableAttributeIds, "readable attribute", errors);
 
         output.AppendLine(
             $"  Event[{row.Id}] title={row.Title}, ratio={row.Ratio}, yes={FormatPairs(row.YesEffects)}, no={FormatPairs(row.NoEffects)}, triggerGe={FormatPairs(row.TriggerGreaterOrEqualConditions)}, triggerLt={FormatPairs(row.TriggerLessThanConditions)}");
@@ -109,13 +113,14 @@ static void ValidateBuffs(
     {
         CheckId("Buff", row.Id, ids, errors);
         CheckRequired("Buff", row.Id, "title", row.Title, errors);
+        CheckRequired("Buff", row.Id, "brief", row.Brief, errors);
         CheckRequired("Buff", row.Id, "content", row.Content, errors);
         CheckCost("Buff", row.Id, row.Cost, errors);
         CheckWeight("Buff", row.Id, row.Weight, errors);
-        CheckAttributePairs("Buff", row.Id, "effects", row.Effects, playerAttributeIds, errors);
+        CheckAttributePairs("Buff", row.Id, "effects", row.Effects, playerAttributeIds, "writable player attribute", errors);
 
         output.AppendLine(
-            $"  Buff[{row.Id}] title={row.Title}, cost={row.Cost}, weight={row.Weight}, effects={FormatPairs(row.Effects)}");
+            $"  Buff[{row.Id}] title={row.Title}, brief={row.Brief}, cost={row.Cost}, weight={row.Weight}, effects={FormatPairs(row.Effects)}");
     }
 }
 
@@ -156,7 +161,8 @@ static void CheckAttributePairs(
     int id,
     string field,
     int[][] pairs,
-    ISet<int> playerAttributeIds,
+    ISet<int> validAttributeIds,
+    string attributeKind,
     ICollection<string> errors)
 {
     if (pairs == null)
@@ -174,9 +180,9 @@ static void CheckAttributePairs(
             continue;
         }
 
-        if (!playerAttributeIds.Contains(pair[0]))
+        if (!validAttributeIds.Contains(pair[0]))
         {
-            errors.Add($"{table}[{id}] field '{field}' item {i} uses unknown player attribute id: {pair[0]}.");
+            errors.Add($"{table}[{id}] field '{field}' item {i} uses unknown {attributeKind} id: {pair[0]}.");
         }
     }
 }

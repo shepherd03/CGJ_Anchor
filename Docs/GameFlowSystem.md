@@ -135,8 +135,15 @@ comment       说明
 1007 氛围
 1008 当前金币，唯一货币
 1009 愿望单数量
-1010 质量分
 ```
+
+动态质量分不再存入 `CharacterAttributeSet`，运行时通过黑板读取：
+
+```text
+质量分 = ((画面 + 氛围) / 2) * (1 - Bug / 100)
+```
+
+代码入口是 `GameFlowBlackboard.QualityScore`。事件触发条件可以继续使用 `1010` 读取动态质量分，但 Buff 和事件效果不要再把 `1010` 作为写入目标；需要提升质量时改 `1006` 画面、`1007` 氛围或 `1005` Bug。
 
 读写示例：
 
@@ -182,7 +189,7 @@ attributeId  delta
 - 改 `WeeklyActionPower` 只影响当前周剩余行动力。
 - 改 `MonthlyCoinIncome` 会影响后续月初发钱。
 - 改 `MonthlyWishlistGrowth` 会影响后续月结算愿望单增长。
-- `Quality` 当前更像综合结果，建议优先通过公式产生，少直接硬改。
+- `Quality` 是动态综合结果，不作为玩家属性直接写入。
 
 ## Buff 和事件接入
 
@@ -409,8 +416,7 @@ Audio 2AP     氛围 +12 到 +15
 
 ```text
 MonthlyWishlistGrowth
-Quality
-Bug
+QualityScore（由画面、氛围、Bug 动态计算）
 MonthSettlementType
 ```
 

@@ -11,7 +11,7 @@ namespace Anchor.GameFlow
         Program,
 
         /// <summary>
-        /// 美术开发投入，主要影响画面表现和质量分。
+        /// 美术开发投入，主要影响画面表现，并通过画面影响动态质量分。
         /// </summary>
         Art,
 

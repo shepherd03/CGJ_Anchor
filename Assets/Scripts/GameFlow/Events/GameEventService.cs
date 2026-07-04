@@ -168,8 +168,8 @@ namespace Anchor.GameFlow.Events
 
             for (var i = 0; i < pairs.Length; i++)
             {
-                RequireAttributePair(blackboard, row, fieldName, pairs[i], i, out var attributeId, out var threshold);
-                if (!predicate(blackboard.PlayerAttributes.Get(attributeId), threshold))
+                RequireReadableAttributePair(blackboard, row, fieldName, pairs[i], i, out var attributeId, out var threshold);
+                if (!predicate(blackboard.GetAttributeValue(attributeId), threshold))
                 {
                     return false;
                 }
@@ -192,15 +192,50 @@ namespace Anchor.GameFlow.Events
             var fieldName = chooseYes ? "yesEffects" : "noEffects";
             for (var i = 0; i < effects.Length; i++)
             {
-                RequireAttributePair(blackboard, row, fieldName, effects[i], i, out var attributeId, out var delta);
+                RequireWritableAttributePair(blackboard, row, fieldName, effects[i], i, out var attributeId, out var delta);
                 blackboard.PlayerAttributes.Add(attributeId, delta);
             }
 
             return effects.Length;
         }
 
-        private static void RequireAttributePair(
+        private static void RequireReadableAttributePair(
             GameFlowBlackboard blackboard,
+            EventRow row,
+            string fieldName,
+            int[] pair,
+            int index,
+            out int attributeId,
+            out int value)
+        {
+            RequireAttributePairShape(row, fieldName, pair, index, out attributeId, out value);
+
+            if (!blackboard.CanReadAttribute(attributeId))
+            {
+                throw new InvalidOperationException(
+                    $"Event {row.Id} field '{fieldName}' item {index} uses unknown readable attribute id: {attributeId}.");
+            }
+        }
+
+        private static void RequireWritableAttributePair(
+            GameFlowBlackboard blackboard,
+            EventRow row,
+            string fieldName,
+            int[] pair,
+            int index,
+            out int attributeId,
+            out int value)
+        {
+            RequireAttributePairShape(row, fieldName, pair, index, out attributeId, out value);
+
+            if (!blackboard.CanWriteAttribute(attributeId))
+            {
+                throw new InvalidOperationException(
+                    $"Event {row.Id} field '{fieldName}' item {index} uses unknown writable attribute id: {attributeId}.");
+            }
+        }
+
+        private static void RequireAttributePairShape(
             EventRow row,
             string fieldName,
             int[] pair,
@@ -216,12 +251,6 @@ namespace Anchor.GameFlow.Events
 
             attributeId = pair[0];
             value = pair[1];
-
-            if (!blackboard.AttributeCatalog.Contains(attributeId))
-            {
-                throw new InvalidOperationException(
-                    $"Event {row.Id} field '{fieldName}' item {index} uses unknown attribute id: {attributeId}.");
-            }
         }
     }
 }

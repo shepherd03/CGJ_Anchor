@@ -201,8 +201,7 @@ namespace Anchor.UI.Panel
                 || attributeId == CharacterAttributeIds.Bug
                 || attributeId == CharacterAttributeIds.Visual
                 || attributeId == CharacterAttributeIds.Atmosphere
-                || attributeId == CharacterAttributeIds.Wishlist
-                || attributeId == CharacterAttributeIds.Quality;
+                || attributeId == CharacterAttributeIds.Wishlist;
         }
 
         /// <summary>

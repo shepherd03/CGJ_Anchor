@@ -17,12 +17,15 @@ namespace Anchor.GameFlow
 
             var visualDelta = blackboard.WeeklyVisualDelta;
             var atmosphereDelta = blackboard.WeeklyAtmosphereDelta;
-            var qualityDelta = 0;
             var bugDelta = blackboard.WeeklyBugDelta;
             var coinDelta = -(program + art + audio) * 35;
             var wishlistDelta = 0;
             wishlistDelta += GetWeeklyWishlistBonus(blackboard, program, art, audio, visualDelta, bugDelta);
             wishlistDelta = (int)Math.Round(wishlistDelta * blackboard.CurrentWeekWishlistMultiplier);
+            var resolvedQualityScore = GameFlowBlackboard.CalculateQualityScore(
+                blackboard.VisualScore + visualDelta,
+                blackboard.AtmosphereScore + atmosphereDelta,
+                Math.Max(0, blackboard.BugScore + bugDelta));
 
             var eventId = 0;
             if (blackboard.RemainingActionPoints > 0)
@@ -31,13 +34,12 @@ namespace Anchor.GameFlow
             }
 
             var summary =
-                $"第 {blackboard.MonthIndex} 月第 {blackboard.WeekIndex} 周结算：质量分 +{qualityDelta}，Bug 值 {bugDelta:+0;-0;0}，愿望单 +{wishlistDelta}，金币 {coinDelta:+0;-0;0}";
+                $"第 {blackboard.MonthIndex} 月第 {blackboard.WeekIndex} 周结算：质量分 {resolvedQualityScore}，Bug 值 {bugDelta:+0;-0;0}，愿望单 +{wishlistDelta}，金币 {coinDelta:+0;-0;0}";
             return new WeekResolveResult(
                 blackboard.MonthIndex,
                 blackboard.WeekIndex,
                 visualDelta,
                 atmosphereDelta,
-                qualityDelta,
                 bugDelta,
                 coinDelta,
                 wishlistDelta,
@@ -53,13 +55,11 @@ namespace Anchor.GameFlow
             }
 
             var month = blackboard.CurrentMonth ?? throw new InvalidOperationException("Cannot settle month before BeginMonth.");
-            var bugPenalty = Math.Max(0f, blackboard.BugScore * 0.35f);
-            var qualityFactor = Math.Max(0f, blackboard.QualityScore - bugPenalty);
+            var qualityFactor = blackboard.QualityScore;
             var rawWishlistDelta = blackboard.WeeklyWishlistGrowth + (int)Math.Round(qualityFactor * GetWishlistMultiplier(month.SettlementType));
             var wishlistGrowthMultiplier = Math.Max(0f, 1f + blackboard.WishlistGrowthPercentBonus / 100f);
             var wishlistDelta = (int)Math.Round(rawWishlistDelta * wishlistGrowthMultiplier);
             var coinDelta = GetCoinDelta(month.SettlementType, wishlistDelta, blackboard.BugScore);
-            var qualityDelta = 0;
             var bugDelta = month.SettlementType == MonthSettlementType.ClosedBeta ? -Math.Min(blackboard.BugScore, 8) : 0;
             var summary = $"{month.DisplayName}{GetSettlementTypeName(month.SettlementType)}：愿望单 +{wishlistDelta}，金币 {coinDelta:+0;-0;0}";
 
@@ -68,7 +68,6 @@ namespace Anchor.GameFlow
                 month.SettlementType,
                 wishlistDelta,
                 coinDelta,
-                qualityDelta,
                 bugDelta,
                 summary);
         }

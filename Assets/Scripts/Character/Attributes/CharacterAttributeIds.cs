@@ -1,7 +1,7 @@
 namespace Anchor.Character.Attributes
 {
     /// <summary>
-    /// 玩家属性表中的核心属性 ID。这里不负责加载配置，只集中声明代码中常用的表格 ID。
+    /// 玩家属性和派生数值中的核心 ID。这里不负责加载配置，只集中声明代码中常用的 ID。
     /// </summary>
     public static class CharacterAttributeIds
     {
@@ -32,7 +32,7 @@ namespace Anchor.Character.Attributes
         /// <summary>当前愿望单数量。</summary>
         public const int Wishlist = 1009;
 
-        /// <summary>当前质量分。</summary>
+        /// <summary>动态质量分，运行时由画面、氛围和 Bug 推导，不在玩家属性表中存储。</summary>
         public const int Quality = 1010;
 
         /// <summary>进入程序房间触发选项时，选择消耗 1 点行动点获得的愿望单数量。</summary>
@@ -82,9 +82,6 @@ namespace Anchor.Character.Attributes
 
         /// <summary>同一回合在三个房间都消耗行动点时，愿望单增长量提高量。</summary>
         public const int AllRoomsSameWeekWishlistGrowthBonus = 1026;
-
-        /// <summary>每回合可消费的固定强化费用；为 0 时不弹出选择。</summary>
-        public const int WeeklyFixedUpgradeCost = 1027;
 
         /// <summary>每周结算时应用的 Bug 值变化量。</summary>
         public const int WeeklyBugDelta = 1028;
