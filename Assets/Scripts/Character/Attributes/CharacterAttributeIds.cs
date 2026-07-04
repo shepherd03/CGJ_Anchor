@@ -35,6 +35,24 @@ namespace Anchor.Character.Attributes
         /// <summary>动态质量分，运行时由画面、氛围和 Bug 推导，不在玩家属性表中存储。</summary>
         public const int Quality = 1010;
 
+        /// <summary>每周刷新程序房间操作次数时使用的基础值。</summary>
+        public const int BaseProgramRoomOperationCount = 1043;
+
+        /// <summary>当前周程序房间剩余操作次数。</summary>
+        public const int ProgramRoomOperationCount = 1044;
+
+        /// <summary>每周刷新美术房间操作次数时使用的基础值。</summary>
+        public const int BaseArtRoomOperationCount = 1045;
+
+        /// <summary>当前周美术房间剩余操作次数。</summary>
+        public const int ArtRoomOperationCount = 1046;
+
+        /// <summary>每周刷新音效房间操作次数时使用的基础值。</summary>
+        public const int BaseAudioRoomOperationCount = 1047;
+
+        /// <summary>当前周音效房间剩余操作次数。</summary>
+        public const int AudioRoomOperationCount = 1048;
+
         /// <summary>当前月内第几周，只读流程镜像；配表可用于条件判断，不允许作为效果修改。</summary>
         public const int CurrentMonthWeekIndex = 1051;
 

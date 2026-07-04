@@ -29,6 +29,12 @@ namespace Anchor.GameFlow
         public int WeeklyWishlistGrowth => GetInt(CharacterAttributeIds.WeeklyWishlistGrowth);
         public int Coins => GetInt(CharacterAttributeIds.Coins);
         public int WishlistCount => GetInt(CharacterAttributeIds.Wishlist);
+        public int BaseProgramRoomOperationCount => GetInt(CharacterAttributeIds.BaseProgramRoomOperationCount);
+        public int ProgramRoomOperationCount => GetInt(CharacterAttributeIds.ProgramRoomOperationCount);
+        public int BaseArtRoomOperationCount => GetInt(CharacterAttributeIds.BaseArtRoomOperationCount);
+        public int ArtRoomOperationCount => GetInt(CharacterAttributeIds.ArtRoomOperationCount);
+        public int BaseAudioRoomOperationCount => GetInt(CharacterAttributeIds.BaseAudioRoomOperationCount);
+        public int AudioRoomOperationCount => GetInt(CharacterAttributeIds.AudioRoomOperationCount);
         public int BudgetShopPurchaseCount => GetInt(CharacterAttributeIds.BudgetShopPurchaseCount);
         public int CurrentBudgetShopPurchaseCount => GetInt(CharacterAttributeIds.CurrentBudgetShopPurchaseCount);
         public int BugScore => PlayerAttributes.Get(CharacterAttributeIds.Bug);
@@ -110,6 +116,7 @@ namespace Anchor.GameFlow
             WeekIndex++;
             TotalWeekIndex++;
             PlayerAttributes.Set(CharacterAttributeIds.WeeklyActionPower, Math.Max(0, BaseWeeklyActionPower));
+            ResetWeeklyRoomOperationCounts();
             RollWeekStartWishlistMultiplier();
             mActionAllocations.Clear();
         }
@@ -152,11 +159,22 @@ namespace Anchor.GameFlow
                 return false;
             }
 
+            if (!HasRoomOperationCount(track))
+            {
+                return false;
+            }
+
+            ConsumeRoomOperationCount(track);
             PlayerAttributes.Set(CharacterAttributeIds.WeeklyActionPower, RemainingActionPoints - points);
             mActionAllocations.TryGetValue(track, out var current);
             mActionAllocations[track] = current + points;
             ApplyRoomActionReward(track, points);
             return true;
+        }
+
+        public bool HasRoomOperationCount(GameDevelopmentTrack track)
+        {
+            return GetRoomOperationCount(track) > 0;
         }
 
         public void ApplyWeekResult(WeekResolveResult result)
@@ -271,6 +289,46 @@ namespace Anchor.GameFlow
         private int GetInt(int attributeId)
         {
             return (int)PlayerAttributes.Get(attributeId);
+        }
+
+        private void ResetWeeklyRoomOperationCounts()
+        {
+            PlayerAttributes.Set(
+                CharacterAttributeIds.ProgramRoomOperationCount,
+                Math.Max(0, BaseProgramRoomOperationCount));
+            PlayerAttributes.Set(
+                CharacterAttributeIds.ArtRoomOperationCount,
+                Math.Max(0, BaseArtRoomOperationCount));
+            PlayerAttributes.Set(
+                CharacterAttributeIds.AudioRoomOperationCount,
+                Math.Max(0, BaseAudioRoomOperationCount));
+        }
+
+        private int GetRoomOperationCount(GameDevelopmentTrack track)
+        {
+            return track switch
+            {
+                GameDevelopmentTrack.Program => ProgramRoomOperationCount,
+                GameDevelopmentTrack.Art => ArtRoomOperationCount,
+                GameDevelopmentTrack.Audio => AudioRoomOperationCount,
+                _ => 0
+            };
+        }
+
+        private void ConsumeRoomOperationCount(GameDevelopmentTrack track)
+        {
+            var attributeId = track switch
+            {
+                GameDevelopmentTrack.Program => CharacterAttributeIds.ProgramRoomOperationCount,
+                GameDevelopmentTrack.Art => CharacterAttributeIds.ArtRoomOperationCount,
+                GameDevelopmentTrack.Audio => CharacterAttributeIds.AudioRoomOperationCount,
+                _ => 0
+            };
+
+            if (attributeId > 0)
+            {
+                PlayerAttributes.Set(attributeId, Math.Max(0, PlayerAttributes.Get(attributeId) - 1));
+            }
         }
 
         private static bool IsReadonlyFlowAttribute(int attributeId)
@@ -410,6 +468,12 @@ namespace Anchor.GameFlow
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Atmosphere);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Coins);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Wishlist);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.BaseProgramRoomOperationCount);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramRoomOperationCount);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.BaseArtRoomOperationCount);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ArtRoomOperationCount);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.BaseAudioRoomOperationCount);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AudioRoomOperationCount);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramRoomOneActionReward);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ProgramRoomTwoActionReward);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.ArtRoomOneActionReward);
