@@ -745,6 +745,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 519420031}
+  enableCameraBounds: 1
+  mainVirtualCamera: {fileID: 2023819105}
+  containedVirtualCamera: {fileID: 190892469}
   enableFollow: 1
   useCurrentZAsPlane: 1
   worldPlaneZ: 0
