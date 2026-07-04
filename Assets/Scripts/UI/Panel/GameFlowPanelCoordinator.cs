@@ -116,8 +116,7 @@ namespace Anchor.UI.Panel
                     RouteCurrentState(runner);
                     break;
                 case GameFlowState.WeekEvent:
-                    runner.ChooseWeekGameEventYes();
-                    RouteCurrentState(runner);
+                    EventPanelManager.Instance?.TryShowCurrentEvent();
                     break;
                 case GameFlowState.WeekAction:
                     runner.FinishWeekAction();
@@ -168,7 +167,7 @@ namespace Anchor.UI.Panel
                     OpenBuffWindow();
                     break;
                 case GameFlowState.WeekEvent:
-                    StartFlowRoutine(RouteFlowAfterCurrentState(runner));
+                    EventPanelManager.Instance?.TryShowCurrentEvent();
                     break;
                 case GameFlowState.WeekAction:
                     OpenMainPanel();
@@ -193,13 +192,8 @@ namespace Anchor.UI.Panel
                 switch (runner.Controller.CurrentState)
                 {
                     case GameFlowState.WeekEvent:
-                        if (!runner.ChooseWeekGameEventYes())
-                        {
-                            yield break;
-                        }
-
-                        yield return null;
-                        break;
+                        EventPanelManager.Instance?.TryShowCurrentEvent();
+                        yield break;
                     case GameFlowState.WeekResolve:
                         yield return OpenWeekPanelAndWaitForClose();
                         runner.ContinueFlow();
@@ -231,6 +225,17 @@ namespace Anchor.UI.Panel
             StopFlowRoutine();
             isAdvancingFlow = true;
             flowRoutine = StartCoroutine(RunFlowRoutine(routine));
+        }
+
+        /// <summary>
+        /// 周事件面板完成关闭动画后继续路由当前流程状态。
+        /// </summary>
+        public void ResumeAfterWeekGameEventChoice()
+        {
+            if (!TryGetRunner(out GameFlowRunner runner) || runner.Controller == null)
+                return;
+
+            RouteCurrentState(runner);
         }
 
         /// <summary>
