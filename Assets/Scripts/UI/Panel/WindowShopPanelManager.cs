@@ -22,6 +22,9 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("用于动态生成的 BuffCard 预制体。")]
         private BuffCardController buffCardPrefab;
 
+        [SerializeField, Tooltip("BuffWindow 的二级介绍弹窗控制器。为空时会从当前物体或子物体查找。")]
+        private IntroductionWindowController introductionWindow;
+
         [Header("Button")]
         [SerializeField, Tooltip("点击后关闭当前 BuffWindow 的按钮。")]
         private Button closeButton;
@@ -133,6 +136,53 @@ namespace Anchor.UI.Panel
             {
                 CreateBuffCard(buffRows[i], i);
             }
+        }
+
+        /// <summary>
+        /// 从外部注入单个 Buff 数据，并刷新二级介绍弹窗的标题、简介和正文。
+        /// </summary>
+        public void InjectIntroductionData(BuffRow buffRow)
+        {
+            if (buffRow == null)
+            {
+                InjectIntroductionData(string.Empty, string.Empty, string.Empty);
+                return;
+            }
+
+            InjectIntroductionData(buffRow.Title, buffRow.Brief, buffRow.Content);
+        }
+
+        /// <summary>
+        /// 从外部注入介绍弹窗文本数据，并立即刷新二级介绍弹窗。
+        /// </summary>
+        public void InjectIntroductionData(string title, string brief, string content)
+        {
+            EnsureIntroductionWindow();
+
+            if (introductionWindow == null)
+            {
+                Debug.LogWarning($"{nameof(WindowShopPanelManager)} needs an introduction window.", this);
+                return;
+            }
+
+            introductionWindow.InjectData(title, brief, content);
+        }
+
+        /// <summary>
+        /// 打开二级介绍弹窗，并用指定 Buff 数据刷新标题、简介和正文。
+        /// </summary>
+        public void OpenIntroductionWindow(BuffRow buffRow)
+        {
+            EnsureIntroductionWindow();
+
+            if (introductionWindow == null)
+            {
+                Debug.LogWarning($"{nameof(WindowShopPanelManager)} needs an introduction window.", this);
+                return;
+            }
+
+            InjectIntroductionData(buffRow);
+            introductionWindow.Open();
         }
 
         /// <summary>
@@ -297,6 +347,19 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
+        /// 查找并缓存 BuffWindow 的二级介绍弹窗控制器。
+        /// </summary>
+        private void EnsureIntroductionWindow()
+        {
+            if (introductionWindow != null)
+            {
+                return;
+            }
+
+            introductionWindow = GetComponentInChildren<IntroductionWindowController>(true);
+        }
+
+        /// <summary>
         /// 查找并缓存动态 BuffCard 的父节点。
         /// </summary>
         private void EnsureBuffCardRoot()
@@ -320,7 +383,42 @@ namespace Anchor.UI.Panel
 
             buffCard.name = $"{buffCardPrefab.name}_{index + 1}";
             buffCard.InjectData(buffTitle, buffIcon);
+            RegisterBuffCardClick(buffCard, buffRow);
             generatedBuffCards.Add(buffCard);
+        }
+
+        /// <summary>
+        /// 给动态生成的 BuffCard 按钮绑定点击事件，点击后打开二级介绍弹窗。
+        /// </summary>
+        private void RegisterBuffCardClick(BuffCardController buffCard, BuffRow buffRow)
+        {
+            Button buffButton = FindBuffCardButton(buffCard);
+            if (buffButton == null)
+            {
+                Debug.LogWarning($"{nameof(WindowShopPanelManager)} cannot find button on generated BuffCard.", buffCard);
+                return;
+            }
+
+            buffButton.onClick.AddListener(() => OpenIntroductionWindow(buffRow));
+        }
+
+        /// <summary>
+        /// 查找 BuffCard 上用于打开介绍弹窗的按钮，优先使用卡片根节点按钮。
+        /// </summary>
+        private static Button FindBuffCardButton(BuffCardController buffCard)
+        {
+            if (buffCard == null)
+            {
+                return null;
+            }
+
+            Button buffButton = buffCard.GetComponent<Button>();
+            if (buffButton != null)
+            {
+                return buffButton;
+            }
+
+            return buffCard.GetComponentInChildren<Button>(true);
         }
 
         /// <summary>
@@ -442,6 +540,7 @@ namespace Anchor.UI.Panel
             EnsureBuffWindowAnimator();
             EnsureBuffCardRoot();
             EnsureRefreshButton();
+            EnsureIntroductionWindow();
         }
     }
 }
