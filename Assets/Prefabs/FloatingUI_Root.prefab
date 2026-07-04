@@ -912,7 +912,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 33165e461e56dcd4e821eb2856a9dcb3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startingActionPoints: 5
   cardCosts: 010000000200000003000000
   warningDuration: 1.2
   warningText: NOT ENOUGH AP!
