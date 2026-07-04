@@ -1,3 +1,4 @@
+using Anchor.GameFlow;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
@@ -22,6 +23,10 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
     [Header("Temporary default values")]
     [SerializeField] private int group4TargetValue = 88;
     [SerializeField] private int group5TargetValue = 88888;
+
+    [Header("Game Flow Data")]
+    [SerializeField, Tooltip("播放动画时优先读取 GameFlowBlackboard，同步 Bug/View/Audio/Wishlist。")]
+    private bool syncWithGameFlowDataOnPlay = true;
 
     private RectTransform group0;
     private RectTransform group1;
@@ -65,25 +70,43 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
     }
 
     /// <summary>
-    /// Replays the opening animation using the currently configured target values.
+    /// 使用当前流程数据重播开场动画；流程数据不可用时使用 Inspector 中的临时默认值。
     /// </summary>
     public void Play()
     {
+        if (syncWithGameFlowDataOnPlay && TryGetCurrentBlackboard(out GameFlowBlackboard blackboard))
+        {
+            Play(
+                blackboard.BugScore,
+                blackboard.VisualScore,
+                blackboard.AtmosphereScore,
+                blackboard.WishlistCount);
+            return;
+        }
+
         Play(group4TargetValue, group5TargetValue);
     }
 
     /// <summary>
-    /// Replays the opening animation. This is the future entry point for real summary data.
+    /// 使用同一个数值刷新 Group4 的三个动画数字，并刷新 Group5 的 Wishlist 动画数字。
     /// </summary>
     public void Play(int group4Value, int group5Value)
+    {
+        Play(group4Value, group4Value, group4Value, group5Value);
+    }
+
+    /// <summary>
+    /// 按 Group4 子物体顺序刷新 Bug、View、Audio，并刷新 Group5 的 Wishlist。
+    /// </summary>
+    public void Play(int bugValue, int viewValue, int audioValue, int wishlistValue)
     {
         if (!Initialize())
         {
             return;
         }
 
-        group4TargetValue = group4Value;
-        group5TargetValue = group5Value;
+        group4TargetValue = bugValue;
+        group5TargetValue = wishlistValue;
 
         openingSequence?.Kill();
         ResetVisuals();
@@ -110,13 +133,16 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
             group3ElementInterval));
         AppendStepInterval();
 
-        openingSequence.Append(CreateGroup4NumberSequence(group4Value));
+        openingSequence.Append(CreateGroup4NumberSequence(bugValue, viewValue, audioValue));
         AppendStepInterval();
 
         openingSequence.AppendCallback(() => group5Number.gameObject.SetActive(true));
-        openingSequence.Append(CreateNumberTween(group5Number, group5Value));
+        openingSequence.Append(CreateNumberTween(group5Number, wishlistValue));
     }
 
+    /// <summary>
+    /// 设置临时默认动画数值；流程数据不可用时 Play() 会使用这组值。
+    /// </summary>
     public void SetTargetValues(int group4Value, int group5Value)
     {
         group4TargetValue = group4Value;
@@ -207,18 +233,32 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
         return sequence;
     }
 
-    private Sequence CreateGroup4NumberSequence(int targetValue)
+    private Sequence CreateGroup4NumberSequence(int bugValue, int viewValue, int audioValue)
     {
         Sequence sequence = DOTween.Sequence();
+        int[] targetValues = { bugValue, viewValue, audioValue };
+
         for (int i = 0; i < group4Numbers.Length; i++)
         {
             TMP_Text number = group4Numbers[i];
             float startTime = i * group4NumberInterval;
             sequence.InsertCallback(startTime, () => number.gameObject.SetActive(true));
-            sequence.Insert(startTime, CreateNumberTween(number, targetValue));
+            sequence.Insert(startTime, CreateNumberTween(number, targetValues[i]));
         }
 
         return sequence;
+    }
+
+    /// <summary>
+    /// 获取当前游戏流程黑板，和 MainPanel、WeekPanel 使用同一份流程数据。
+    /// </summary>
+    private static bool TryGetCurrentBlackboard(out GameFlowBlackboard blackboard)
+    {
+        blackboard = GameFlowRunner.Instance != null && GameFlowRunner.Instance.Controller != null
+            ? GameFlowRunner.Instance.Controller.Blackboard
+            : null;
+
+        return blackboard != null;
     }
 
     private Tween CreateNumberTween(TMP_Text label, int targetValue)

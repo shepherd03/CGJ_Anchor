@@ -1,4 +1,6 @@
 using System;
+using Anchor.GameFlow;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,6 +9,19 @@ namespace Anchor.UI.Panel
     [DisallowMultipleComponent]
     public sealed class WeekPanelManager : PanelManagerSingleton<WeekPanelManager>
     {
+        [Header("Status Text")]
+        [SerializeField, Tooltip("显示 Bug 数值的 TextMeshProUGUI。")]
+        private TextMeshProUGUI bugText;
+
+        [SerializeField, Tooltip("显示 View 数值的 TextMeshProUGUI。")]
+        private TextMeshProUGUI viewText;
+
+        [SerializeField, Tooltip("显示 Audio 数值的 TextMeshProUGUI。")]
+        private TextMeshProUGUI audioText;
+
+        [SerializeField, Tooltip("显示 Wishlist 数值的 TextMeshProUGUI。")]
+        private TextMeshProUGUI wishlistText;
+
         [Header("Button")]
         [SerializeField, Tooltip("点击后关闭当前 WeekPanel 的按钮。")]
         private Button closeButton;
@@ -20,6 +35,7 @@ namespace Anchor.UI.Panel
         private void OnEnable()
         {
             RegisterCloseButtonClick();
+            RefreshStatusText();
         }
 
         /// <summary>
@@ -41,6 +57,8 @@ namespace Anchor.UI.Panel
             {
                 gameObject.SetActive(true);
             }
+
+            RefreshStatusText();
         }
 
         /// <summary>
@@ -69,6 +87,57 @@ namespace Anchor.UI.Panel
             Action closedCallback = onClosed;
             onClosed = null;
             closedCallback?.Invoke();
+        }
+
+        /// <summary>
+        /// 刷新 WeekPanel 上显示的玩家流程属性。
+        /// </summary>
+        public void RefreshStatusText()
+        {
+            if (!TryGetCurrentBlackboard(out GameFlowBlackboard blackboard))
+            {
+                SetStatusTextUnavailable();
+                return;
+            }
+
+            SetText(bugText, $"Bug: {blackboard.BugScore}");
+            SetText(viewText, $"View: {blackboard.VisualScore}");
+            SetText(audioText, $"Audio: {blackboard.AtmosphereScore}");
+            SetText(wishlistText, $"Wishlist: {blackboard.WishlistCount}");
+        }
+
+        /// <summary>
+        /// 获取当前游戏流程黑板，和 MainPanel 使用同一份流程数据。
+        /// </summary>
+        private static bool TryGetCurrentBlackboard(out GameFlowBlackboard blackboard)
+        {
+            blackboard = GameFlowRunner.Instance != null && GameFlowRunner.Instance.Controller != null
+                ? GameFlowRunner.Instance.Controller.Blackboard
+                : null;
+
+            return blackboard != null;
+        }
+
+        /// <summary>
+        /// 流程数据不可用时显示占位内容。
+        /// </summary>
+        private void SetStatusTextUnavailable()
+        {
+            SetText(bugText, "Bug: --");
+            SetText(viewText, "View: --");
+            SetText(audioText, "Audio: --");
+            SetText(wishlistText, "Wishlist: --");
+        }
+
+        /// <summary>
+        /// 设置 TMP 文本，未绑定时直接跳过。
+        /// </summary>
+        private static void SetText(TextMeshProUGUI text, string value)
+        {
+            if (text != null)
+            {
+                text.text = value;
+            }
         }
 
         /// <summary>
