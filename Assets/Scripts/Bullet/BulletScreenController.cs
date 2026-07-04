@@ -40,6 +40,9 @@ public class BulletScreenController : MonoBehaviour
     [SerializeField, Min(0f), Tooltip("以 Root 中心为基准，弹幕 Y 轴向下随机的最大距离。")]
     private float rootDownDistance = 300f;
 
+    [SerializeField, Range(0f, 1f), Tooltip("弹幕生成在 Root 上半部分的概率，0.7 表示 70%。")]
+    private float upperHalfSpawnChance = 0.7f;
+
     [SerializeField, Min(0f), Tooltip("弹幕生成时距离右侧屏幕外的额外距离。")]
     private float rightSpawnPadding = 80f;
 
@@ -397,12 +400,13 @@ public class BulletScreenController : MonoBehaviour
     }
 
     /// <summary>
-    /// 按 Root 中心坐标生成右侧屏幕外位置，并在上下距离范围内随机 Y 轴。
+    /// 按 Root 中心坐标生成右侧屏幕外位置，并按概率随机到上半区或下半区。
     /// </summary>
     private Vector2 CreateSpawnPosition(float bulletWidth)
     {
         float x = cachedRoot.rect.width * 0.5f + rightSpawnPadding + bulletWidth * 0.5f;
-        float y = Random.Range(-rootDownDistance, rootUpDistance);
+        bool shouldSpawnUpperHalf = Random.value < upperHalfSpawnChance;
+        float y = shouldSpawnUpperHalf ? Random.Range(0f, rootUpDistance) : Random.Range(-rootDownDistance, 0f);
         return new Vector2(x, y);
     }
 
@@ -515,6 +519,7 @@ public class BulletScreenController : MonoBehaviour
         poolCapacity = Mathf.Max(1, poolCapacity);
         rootUpDistance = Mathf.Max(0f, rootUpDistance);
         rootDownDistance = Mathf.Max(0f, rootDownDistance);
+        upperHalfSpawnChance = Mathf.Clamp01(upperHalfSpawnChance);
         rightSpawnPadding = Mathf.Max(0f, rightSpawnPadding);
         leftDespawnPadding = Mathf.Max(0f, leftDespawnPadding);
         widthPadding = Mathf.Max(0f, widthPadding);
