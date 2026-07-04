@@ -1,5 +1,6 @@
 using Anchor.GameFlow;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 /// <summary>
@@ -17,11 +18,18 @@ public sealed class FloatingUIManager : MonoBehaviour
     [SerializeField, Tooltip("行动点不足反馈控制器。为空时会从当前物体子级查找。")]
     private FloatingUIActionPoints actionPoints;
 
+    [SerializeField, Tooltip("控制当前 Floating UI 开关的按钮组件。为空时会从父级或场景中查找。")]
+    private ButtonPrefabSpawner buttonPrefabSpawner;
+
     // 缓存当前 Floating UI 直接子对象上的三个 Button，前两个接入音效房间行动点逻辑，第三个暂时只持有。
     private readonly Button[] childButtons = new Button[ManagedButtonCount];
 
+    // 缓存三个子按钮的点击回调，保证注册和解绑使用同一个委托实例。
+    private readonly UnityAction[] childButtonCallbacks = new UnityAction[ManagedButtonCount];
+
     public FloatingUIFan Fan => floatingUIFan;
     public FloatingUIActionPoints ActionPoints => actionPoints;
+    public ButtonPrefabSpawner Spawner => buttonPrefabSpawner;
 
     /// <summary>
     /// 添加组件时自动缓存当前层级下已有的 Floating UI 组件。
@@ -30,6 +38,7 @@ public sealed class FloatingUIManager : MonoBehaviour
     {
         CacheFloatingUIReferences();
         CacheChildButtons();
+        CacheButtonPrefabSpawner();
     }
 
     /// <summary>
@@ -39,6 +48,8 @@ public sealed class FloatingUIManager : MonoBehaviour
     {
         CacheMissingFloatingUIReferences();
         CacheChildButtons();
+        CacheMissingButtonPrefabSpawner();
+        EnsureChildButtonCallbacks();
     }
 
     /// <summary>
@@ -75,6 +86,7 @@ public sealed class FloatingUIManager : MonoBehaviour
         floatingUIFan = GetComponentInChildren<FloatingUIFan>(true);
         actionPoints = GetComponentInChildren<FloatingUIActionPoints>(true);
         CacheChildButtons();
+        CacheButtonPrefabSpawner();
     }
 
     /// <summary>
@@ -90,6 +102,25 @@ public sealed class FloatingUIManager : MonoBehaviour
         if (actionPoints == null)
         {
             actionPoints = GetComponentInChildren<FloatingUIActionPoints>(true);
+        }
+    }
+
+    /// <summary>
+    /// 重新查找并缓存控制当前 Floating UI 的 ButtonPrefabSpawner。
+    /// </summary>
+    public void CacheButtonPrefabSpawner()
+    {
+        buttonPrefabSpawner = FindButtonPrefabSpawner();
+    }
+
+    /// <summary>
+    /// 只在开关组件引用为空时补齐，避免覆盖 Inspector 手动指定。
+    /// </summary>
+    public void CacheMissingButtonPrefabSpawner()
+    {
+        if (buttonPrefabSpawner == null)
+        {
+            buttonPrefabSpawner = FindButtonPrefabSpawner();
         }
     }
 
@@ -194,23 +225,32 @@ public sealed class FloatingUIManager : MonoBehaviour
     private void RegisterChildButtonClicks()
     {
         CacheChildButtons();
-        RegisterButtonClick(0, TrySpendAudioOneActionPoint);
-        RegisterButtonClick(1, TrySpendAudioTwoActionPoints);
+        CacheMissingButtonPrefabSpawner();
+        EnsureChildButtonCallbacks();
+
+        for (int i = 0; i < childButtonCallbacks.Length; i++)
+        {
+            RegisterButtonClick(i, childButtonCallbacks[i]);
+        }
     }
 
     /// <summary>
-    /// 移除音效房间行动点按钮点击事件。
+    /// 移除 Floating UI 子按钮点击事件。
     /// </summary>
     private void UnregisterChildButtonClicks()
     {
-        UnregisterButtonClick(0, TrySpendAudioOneActionPoint);
-        UnregisterButtonClick(1, TrySpendAudioTwoActionPoints);
+        EnsureChildButtonCallbacks();
+
+        for (int i = 0; i < childButtonCallbacks.Length; i++)
+        {
+            UnregisterButtonClick(i, childButtonCallbacks[i]);
+        }
     }
 
     /// <summary>
     /// 给指定子按钮注册点击事件，注册前先移除同一事件防止重复绑定。
     /// </summary>
-    private void RegisterButtonClick(int buttonIndex, UnityEngine.Events.UnityAction action)
+    private void RegisterButtonClick(int buttonIndex, UnityAction action)
     {
         if (!TryGetChildButton(buttonIndex, out Button button))
         {
@@ -224,7 +264,7 @@ public sealed class FloatingUIManager : MonoBehaviour
     /// <summary>
     /// 从指定子按钮移除点击事件。
     /// </summary>
-    private void UnregisterButtonClick(int buttonIndex, UnityEngine.Events.UnityAction action)
+    private void UnregisterButtonClick(int buttonIndex, UnityAction action)
     {
         if (!TryGetChildButton(buttonIndex, out Button button))
         {
@@ -251,19 +291,55 @@ public sealed class FloatingUIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 第一个子按钮：消耗 1 点音效房间行动点。
+    /// 确保三个子按钮都有稳定的点击回调。
     /// </summary>
-    private void TrySpendAudioOneActionPoint()
+    private void EnsureChildButtonCallbacks()
     {
-        TrySpendAudioActionPoints(1);
+        childButtonCallbacks[0] ??= OnFirstChildButtonClicked;
+        childButtonCallbacks[1] ??= OnSecondChildButtonClicked;
+        childButtonCallbacks[2] ??= OnThirdChildButtonClicked;
     }
 
     /// <summary>
-    /// 第二个子按钮：消耗 2 点音效房间行动点。
+    /// 第一个子按钮：尝试消耗 1 点音效行动点，然后关闭 Floating UI。
     /// </summary>
-    private void TrySpendAudioTwoActionPoints()
+    private void OnFirstChildButtonClicked()
+    {
+        TrySpendAudioActionPoints(1);
+        CloseFloatingUIFromSpawner();
+    }
+
+    /// <summary>
+    /// 第二个子按钮：尝试消耗 2 点音效行动点，然后关闭 Floating UI。
+    /// </summary>
+    private void OnSecondChildButtonClicked()
     {
         TrySpendAudioActionPoints(2);
+        CloseFloatingUIFromSpawner();
+    }
+
+    /// <summary>
+    /// 第三个子按钮：暂时只负责关闭 Floating UI。
+    /// </summary>
+    private void OnThirdChildButtonClicked()
+    {
+        CloseFloatingUIFromSpawner();
+    }
+
+    /// <summary>
+    /// 调用 ButtonPrefabSpawner 的完整按钮点击链，复用原按钮再次点击的全部效果。
+    /// </summary>
+    private void CloseFloatingUIFromSpawner()
+    {
+        CacheMissingButtonPrefabSpawner();
+
+        if (buttonPrefabSpawner != null)
+        {
+            buttonPrefabSpawner.InvokeToggleButtonClick();
+            return;
+        }
+
+        CloseFan();
     }
 
     /// <summary>
@@ -293,5 +369,28 @@ public sealed class FloatingUIManager : MonoBehaviour
 
         Debug.LogWarning($"{nameof(FloatingUIManager)} 找不到 {nameof(GameFlowRunner)}，无法消耗音效房间行动点：{name}", this);
         return false;
+    }
+
+    /// <summary>
+    /// 查找控制当前 Floating UI 所在层级的 ButtonPrefabSpawner。
+    /// </summary>
+    private ButtonPrefabSpawner FindButtonPrefabSpawner()
+    {
+        ButtonPrefabSpawner parentSpawner = GetComponentInParent<ButtonPrefabSpawner>(true);
+        if (parentSpawner != null && parentSpawner.ControlsTarget(transform))
+        {
+            return parentSpawner;
+        }
+
+        ButtonPrefabSpawner[] spawners = FindObjectsOfType<ButtonPrefabSpawner>(true);
+        for (int i = 0; i < spawners.Length; i++)
+        {
+            if (spawners[i] != null && spawners[i].ControlsTarget(transform))
+            {
+                return spawners[i];
+            }
+        }
+
+        return null;
     }
 }

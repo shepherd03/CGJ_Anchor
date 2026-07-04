@@ -110,6 +110,38 @@ public sealed class ButtonPrefabSpawner : MonoBehaviour
     }
 
     /// <summary>
+    /// 触发开关按钮的完整点击链，保证相机、Floating UI 等所有挂在按钮上的效果一致执行。
+    /// </summary>
+    public void InvokeToggleButtonClick()
+    {
+        ResolveMissingReferences();
+
+        if (toggleButton == null)
+        {
+            Debug.LogWarning($"{nameof(ButtonPrefabSpawner)} needs a toggle button.", this);
+            ToggleTargetObject();
+            return;
+        }
+
+        toggleButton.onClick.Invoke();
+    }
+
+    /// <summary>
+    /// 判断当前开关组件是否控制指定 Floating UI 层级。
+    /// </summary>
+    public bool ControlsTarget(Transform candidate)
+    {
+        if (candidate == null)
+        {
+            return false;
+        }
+
+        ResolveMissingReferences();
+        return targetObject != null
+            && (candidate == targetObject.transform || candidate.IsChildOf(targetObject.transform));
+    }
+
+    /// <summary>
     /// 给按钮注册点击切换回调。
     /// </summary>
     private void RegisterButtonClick()
