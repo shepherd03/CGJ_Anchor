@@ -10,7 +10,7 @@ namespace Anchor.GameFlow
 {
     public sealed class GameFlowController
     {
-        public const int DefaultBudgetShopBuffOfferCount = 3;
+        public const int DefaultBudgetShopBuffOfferCount = 6;
 
         private readonly FSM<GameFlowState> mFsm;
 

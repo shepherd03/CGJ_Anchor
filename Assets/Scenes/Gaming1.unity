@@ -1961,11 +1961,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 15713675076556474, guid: c42715f72a8b8449fb0ec8286fc5ea7b, type: 3}
   m_PrefabInstance: {fileID: 1808169801}
   m_PrefabAsset: {fileID: 0}
---- !u!224 &1062393086 stripped
-RectTransform:
-  m_CorrespondingSourceObject: {fileID: 449712402771711849, guid: d074b30a18a174c2a8596db85bb6c202, type: 3}
-  m_PrefabInstance: {fileID: 1076406468}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1076406468
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1982,14 +1977,6 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5797638077311637076, guid: d074b30a18a174c2a8596db85bb6c202, type: 3}
-      propertyPath: buffCardRoot
-      value: 
-      objectReference: {fileID: 1062393086}
-    - target: {fileID: 5797638077311637076, guid: d074b30a18a174c2a8596db85bb6c202, type: 3}
-      propertyPath: buffCardPrefab
-      value: 
-      objectReference: {fileID: 2780075506762376919, guid: 1ecd46fa01d74434390135624a295410, type: 3}
     - target: {fileID: 5984951678709732320, guid: d074b30a18a174c2a8596db85bb6c202, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
