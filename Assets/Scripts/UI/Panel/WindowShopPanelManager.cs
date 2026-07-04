@@ -1,3 +1,4 @@
+using Anchor.GameFlow;
 using Anchor.Window;
 using UnityEngine;
 using UnityEngine.UI;
@@ -15,6 +16,7 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("点击后关闭当前 BuffWindow 的按钮。")]
         private Button closeButton;
 
+        private GameFlowRunner gameFlowRunner;
         private MainPanelManager mainPanelManager;
 
         /// <summary>
@@ -91,8 +93,42 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void OnCloseButtonClicked()
         {
+            if (!TryConfirmBudgetShop())
+            {
+                return;
+            }
+
             Close();
             OpenMainPanel();
+        }
+
+        /// <summary>
+        /// 在月初商店阶段确认 Buff 选择，让流程进入周行动阶段。
+        /// </summary>
+        private bool TryConfirmBudgetShop()
+        {
+            EnsureGameFlowRunner();
+
+            if (gameFlowRunner == null || gameFlowRunner.Controller == null)
+            {
+                Debug.LogWarning($"{nameof(WindowShopPanelManager)} cannot find active {nameof(GameFlowRunner)}.", this);
+                return false;
+            }
+
+            GameFlowState currentState = gameFlowRunner.Controller.CurrentState;
+            if (currentState == GameFlowState.BudgetShop)
+            {
+                gameFlowRunner.ConfirmBudgetShop();
+                return true;
+            }
+
+            if (currentState == GameFlowState.WeekAction)
+            {
+                return true;
+            }
+
+            Debug.LogWarning($"{nameof(WindowShopPanelManager)} cannot confirm budget shop during {currentState}.", this);
+            return false;
         }
 
         /// <summary>
@@ -119,6 +155,17 @@ namespace Anchor.UI.Panel
             if (mainPanelManager == null)
             {
                 mainPanelManager = FindObjectOfType<MainPanelManager>(true);
+            }
+        }
+
+        /// <summary>
+        /// 查找并缓存场景中的 GameFlowRunner。
+        /// </summary>
+        private void EnsureGameFlowRunner()
+        {
+            if (gameFlowRunner == null)
+            {
+                gameFlowRunner = FindObjectOfType<GameFlowRunner>();
             }
         }
 
