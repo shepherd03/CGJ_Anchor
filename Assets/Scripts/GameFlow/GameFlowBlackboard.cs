@@ -14,6 +14,7 @@ namespace Anchor.GameFlow
 
         public int MonthIndex { get; private set; }
         public int WeekIndex { get; private set; }
+        public int TotalWeekIndex { get; private set; }
         public int RemainingActionPoints => CurrentWeekActionPower;
         public GamePlayer Player { get; } = new();
         public CharacterAttributeSet PlayerAttributes => Player.Attributes;
@@ -28,6 +29,14 @@ namespace Anchor.GameFlow
         public int BugScore => PlayerAttributes.Get(CharacterAttributeIds.Bug);
         public int VisualScore => PlayerAttributes.Get(CharacterAttributeIds.Visual);
         public int AtmosphereScore => PlayerAttributes.Get(CharacterAttributeIds.Atmosphere);
+        public int MilestoneWeekEndWishlistReward => GetInt(CharacterAttributeIds.MilestoneWeekEndWishlistReward);
+        public int LowBugWeeklyWishlistReward => GetInt(CharacterAttributeIds.LowBugWeeklyWishlistReward);
+        public int WishlistGrowthPercentBonus => GetInt(CharacterAttributeIds.WishlistGrowthPercentBonus);
+        public int HighVisualWeekEndWishlistGrowthBonus => GetInt(CharacterAttributeIds.HighVisualWeekEndWishlistGrowthBonus);
+        public int AllRoomsSameWeekWishlistGrowthBonus => GetInt(CharacterAttributeIds.AllRoomsSameWeekWishlistGrowthBonus);
+        public int WeeklyBugDelta => GetInt(CharacterAttributeIds.WeeklyBugDelta);
+        public int WeeklyVisualDelta => GetInt(CharacterAttributeIds.WeeklyVisualDelta);
+        public int WeeklyAtmosphereDelta => GetInt(CharacterAttributeIds.WeeklyAtmosphereDelta);
         public MonthDefinition CurrentMonth { get; private set; }
         public WeekResolveResult LastWeekResult { get; private set; }
         public MonthSettlementResult LastMonthResult { get; private set; }
@@ -47,6 +56,7 @@ namespace Anchor.GameFlow
         {
             MonthIndex = 0;
             WeekIndex = 0;
+            TotalWeekIndex = 0;
             PlayerAttributes.Clear();
             foreach (var row in mAttributeCatalog.RowsById.Values)
             {
@@ -73,6 +83,7 @@ namespace Anchor.GameFlow
         public void BeginWeek()
         {
             WeekIndex++;
+            TotalWeekIndex++;
             PlayerAttributes.Set(CharacterAttributeIds.WeeklyActionPower, Math.Max(0, BaseWeeklyActionPower));
             mActionAllocations.Clear();
         }
@@ -131,6 +142,22 @@ namespace Anchor.GameFlow
             return mActionAllocations.TryGetValue(track, out var points) ? points : 0;
         }
 
+        public bool HasActiveBuff(int buffId)
+        {
+            return mActiveBuffIds.Contains(buffId);
+        }
+
+        public bool AddActiveBuff(int buffId)
+        {
+            if (buffId <= 0 || HasActiveBuff(buffId))
+            {
+                return false;
+            }
+
+            mActiveBuffIds.Add(buffId);
+            return true;
+        }
+
         private int GetInt(int attributeId)
         {
             return (int)PlayerAttributes.Get(attributeId);
@@ -148,6 +175,14 @@ namespace Anchor.GameFlow
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Coins);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Wishlist);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Quality);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.MilestoneWeekEndWishlistReward);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.LowBugWeeklyWishlistReward);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WishlistGrowthPercentBonus);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.HighVisualWeekEndWishlistGrowthBonus);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.AllRoomsSameWeekWishlistGrowthBonus);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyBugDelta);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyVisualDelta);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyAtmosphereDelta);
         }
     }
 }

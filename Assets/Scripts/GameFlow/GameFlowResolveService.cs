@@ -13,18 +13,18 @@ namespace Anchor.GameFlow
 
             var program = blackboard.GetAllocatedPoints(GameDevelopmentTrack.Program);
             var art = blackboard.GetAllocatedPoints(GameDevelopmentTrack.Art);
-            var design = blackboard.GetAllocatedPoints(GameDevelopmentTrack.Design);
-            var testing = blackboard.GetAllocatedPoints(GameDevelopmentTrack.Testing);
-            var marketing = blackboard.GetAllocatedPoints(GameDevelopmentTrack.Marketing);
+            var audio = blackboard.GetAllocatedPoints(GameDevelopmentTrack.Audio);
 
             var programQuality = program * 8f;
-            var visualDelta = art * 7;
-            var atmosphereDelta = design * 7;
-            var marketingWishlist = marketing * 18f;
-            var qualityDelta = (int)Math.Round(programQuality * 0.35f + visualDelta * 0.3f + atmosphereDelta * 0.35f);
-            var bugDelta = (int)Math.Round(program * 1.5f + design * 0.8f - testing * 4f);
-            var coinDelta = -(program + art + design + testing + marketing) * 35;
-            var wishlistDelta = (int)Math.Round(marketingWishlist + qualityDelta * 0.4f);
+            var actionVisualDelta = art * 7;
+            var actionAtmosphereDelta = audio * 7;
+            var visualDelta = actionVisualDelta + blackboard.WeeklyVisualDelta;
+            var atmosphereDelta = actionAtmosphereDelta + blackboard.WeeklyAtmosphereDelta;
+            var qualityDelta = (int)Math.Round(programQuality * 0.35f + actionVisualDelta * 0.3f + actionAtmosphereDelta * 0.35f);
+            var bugDelta = (int)Math.Round(program * 1.5f + audio * 0.8f) + blackboard.WeeklyBugDelta;
+            var coinDelta = -(program + art + audio) * 35;
+            var wishlistDelta = (int)Math.Round(qualityDelta * 0.4f);
+            wishlistDelta += GetWeeklyWishlistBonus(blackboard, program, art, audio, visualDelta, bugDelta);
 
             var eventId = 0;
             if (blackboard.RemainingActionPoints > 0)
@@ -58,7 +58,9 @@ namespace Anchor.GameFlow
             var month = blackboard.CurrentMonth ?? throw new InvalidOperationException("Cannot settle month before BeginMonth.");
             var bugPenalty = Math.Max(0f, blackboard.BugScore * 0.35f);
             var qualityFactor = Math.Max(0f, blackboard.QualityScore - bugPenalty);
-            var wishlistDelta = blackboard.WeeklyWishlistGrowth + (int)Math.Round(qualityFactor * GetWishlistMultiplier(month.SettlementType));
+            var rawWishlistDelta = blackboard.WeeklyWishlistGrowth + (int)Math.Round(qualityFactor * GetWishlistMultiplier(month.SettlementType));
+            var wishlistGrowthMultiplier = Math.Max(0f, 1f + blackboard.WishlistGrowthPercentBonus / 100f);
+            var wishlistDelta = (int)Math.Round(rawWishlistDelta * wishlistGrowthMultiplier);
             var coinDelta = GetCoinDelta(month.SettlementType, wishlistDelta, blackboard.BugScore);
             var qualityDelta = 0;
             var bugDelta = month.SettlementType == MonthSettlementType.ClosedBeta ? -Math.Min(blackboard.BugScore, 8) : 0;
@@ -135,6 +137,43 @@ namespace Anchor.GameFlow
             };
 
             return baseIncome + wishlistDelta / 4 - (int)Math.Round(bugScore * 5f);
+        }
+
+        private static int GetWeeklyWishlistBonus(
+            GameFlowBlackboard blackboard,
+            int program,
+            int art,
+            int audio,
+            int visualDelta,
+            int bugDelta)
+        {
+            var bonus = 0;
+
+            if (blackboard.TotalWeekIndex == 3 ||
+                blackboard.TotalWeekIndex == 6 ||
+                blackboard.TotalWeekIndex == 9)
+            {
+                bonus += blackboard.MilestoneWeekEndWishlistReward;
+            }
+
+            var resolvedBugScore = Math.Max(0, blackboard.BugScore + bugDelta);
+            if (resolvedBugScore < 40)
+            {
+                bonus += blackboard.LowBugWeeklyWishlistReward;
+            }
+
+            var resolvedVisualScore = blackboard.VisualScore + visualDelta;
+            if (resolvedVisualScore > 60)
+            {
+                bonus += blackboard.HighVisualWeekEndWishlistGrowthBonus;
+            }
+
+            if (program > 0 && art > 0 && audio > 0)
+            {
+                bonus += blackboard.AllRoomsSameWeekWishlistGrowthBonus;
+            }
+
+            return bonus;
         }
     }
 }

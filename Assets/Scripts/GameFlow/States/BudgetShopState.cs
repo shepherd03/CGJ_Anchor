@@ -12,6 +12,7 @@ namespace Anchor.GameFlow.States
         protected override void OnEnter()
         {
             NotifyEntered(GameFlowState.BudgetShop);
+            Controller.RefreshBudgetShopBuffOffers();
 
             if (Controller.AutoAdvanceInteractiveStates)
             {

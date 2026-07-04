@@ -16,3 +16,4 @@
 ## 文档
 
 - [游戏流程系统接入指南](Docs/GameFlowSystem.md)
+- [角色属性接入进度表](Docs/PlayerAttributeIntegration.md)

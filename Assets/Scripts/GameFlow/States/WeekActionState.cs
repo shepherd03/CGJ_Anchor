@@ -21,8 +21,9 @@ namespace Anchor.GameFlow.States
             var points = mBlack.RemainingActionPoints;
             if (points > 0)
             {
-                mBlack.TryAllocate(GameDevelopmentTrack.Program, points / 2);
-                mBlack.TryAllocate(GameDevelopmentTrack.Art, (points + 1) / 2);
+                mBlack.TryAllocate(GameDevelopmentTrack.Program, points / 3);
+                mBlack.TryAllocate(GameDevelopmentTrack.Art, points / 3);
+                mBlack.TryAllocate(GameDevelopmentTrack.Audio, points - points / 3 * 2);
             }
 
             mFSM.Change(GameFlowState.WeekResolve);

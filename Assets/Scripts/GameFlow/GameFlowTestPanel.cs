@@ -21,9 +21,7 @@ namespace Anchor.GameFlow
         [SerializeField] private Button mNextWeekButton;
         [SerializeField] private Button mProgramButton;
         [SerializeField] private Button mArtButton;
-        [SerializeField] private Button mDesignButton;
-        [SerializeField] private Button mTestingButton;
-        [SerializeField] private Button mMarketingButton;
+        [SerializeField] private Button mAudioButton;
         [SerializeField] private Button mActionPowerButton;
         [SerializeField] private Button mCoinsButton;
         [SerializeField] private Button mBugButton;
@@ -153,19 +151,9 @@ namespace Anchor.GameFlow
             AllocateActionPoint(GameDevelopmentTrack.Art, "画面");
         }
 
-        public void AllocateDesign()
+        public void AllocateAudio()
         {
-            AllocateActionPoint(GameDevelopmentTrack.Design, "氛围");
-        }
-
-        public void AllocateTesting()
-        {
-            AllocateActionPoint(GameDevelopmentTrack.Testing, "测试");
-        }
-
-        public void AllocateMarketing()
-        {
-            AllocateActionPoint(GameDevelopmentTrack.Marketing, "宣传");
+            AllocateActionPoint(GameDevelopmentTrack.Audio, "音效");
         }
 
         public void AddWeeklyActionPower()
@@ -210,9 +198,7 @@ namespace Anchor.GameFlow
             if (mNextWeekButton != null) mNextWeekButton.onClick.AddListener(AdvanceWeek);
             if (mProgramButton != null) mProgramButton.onClick.AddListener(AllocateProgram);
             if (mArtButton != null) mArtButton.onClick.AddListener(AllocateArt);
-            if (mDesignButton != null) mDesignButton.onClick.AddListener(AllocateDesign);
-            if (mTestingButton != null) mTestingButton.onClick.AddListener(AllocateTesting);
-            if (mMarketingButton != null) mMarketingButton.onClick.AddListener(AllocateMarketing);
+            if (mAudioButton != null) mAudioButton.onClick.AddListener(AllocateAudio);
             if (mActionPowerButton != null) mActionPowerButton.onClick.AddListener(AddWeeklyActionPower);
             if (mCoinsButton != null) mCoinsButton.onClick.AddListener(AddCoins);
             if (mBugButton != null) mBugButton.onClick.AddListener(AddBug);
@@ -225,9 +211,7 @@ namespace Anchor.GameFlow
             if (mNextWeekButton != null) mNextWeekButton.onClick.RemoveListener(AdvanceWeek);
             if (mProgramButton != null) mProgramButton.onClick.RemoveListener(AllocateProgram);
             if (mArtButton != null) mArtButton.onClick.RemoveListener(AllocateArt);
-            if (mDesignButton != null) mDesignButton.onClick.RemoveListener(AllocateDesign);
-            if (mTestingButton != null) mTestingButton.onClick.RemoveListener(AllocateTesting);
-            if (mMarketingButton != null) mMarketingButton.onClick.RemoveListener(AllocateMarketing);
+            if (mAudioButton != null) mAudioButton.onClick.RemoveListener(AllocateAudio);
             if (mActionPowerButton != null) mActionPowerButton.onClick.RemoveListener(AddWeeklyActionPower);
             if (mCoinsButton != null) mCoinsButton.onClick.RemoveListener(AddCoins);
             if (mBugButton != null) mBugButton.onClick.RemoveListener(AddBug);
@@ -277,10 +261,8 @@ namespace Anchor.GameFlow
             var actionPanel = CreatePanel(canvas.transform, "行动点面板", 476f, -360f, 540f, 248f);
             CreatePanelTitle(actionPanel.transform, "消费行动点");
             mProgramButton = CreateButton(actionPanel.transform, "投入程序按钮", "程序 -1", 20f, 64f, 150f, 52f);
-            mArtButton = CreateButton(actionPanel.transform, "投入画面按钮", "画面 -1", 190f, 64f, 150f, 52f);
-            mDesignButton = CreateButton(actionPanel.transform, "投入氛围按钮", "氛围 -1", 360f, 64f, 150f, 52f);
-            mTestingButton = CreateButton(actionPanel.transform, "投入测试按钮", "测试 -1", 20f, 140f, 150f, 52f);
-            mMarketingButton = CreateButton(actionPanel.transform, "投入宣传按钮", "宣传 -1", 190f, 140f, 150f, 52f);
+            mArtButton = CreateButton(actionPanel.transform, "投入美术按钮", "美术 -1", 190f, 64f, 150f, 52f);
+            mAudioButton = CreateButton(actionPanel.transform, "投入音效按钮", "音效 -1", 360f, 64f, 150f, 52f);
 
             var logPanel = CreatePanel(canvas.transform, "日志面板", 1040f, -92f, 520f, 516f);
             CreatePanelTitle(logPanel.transform, "测试日志");

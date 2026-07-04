@@ -1,8 +1,12 @@
+using System.Collections.Generic;
 using Anchor.Character.Attributes;
 using Anchor.Config;
+using Anchor.GameFlow.Buffs;
 using UnityEngine;
 using YokiFrame;
 using YokiFrame.Unity;
+
+using BuffRow = Anchor.Config.game.buff;
 
 namespace Anchor.GameFlow
 {
@@ -26,6 +30,14 @@ namespace Anchor.GameFlow
         private GameFlowController mController;
 
         public GameFlowController Controller => mController;
+        public IReadOnlyList<BuffRow> CurrentBudgetShopBuffOffers
+        {
+            get
+            {
+                EnsureController();
+                return mController.CurrentBudgetShopBuffOffers;
+            }
+        }
 
         /// <summary>
         /// 初始化流程单例和流程控制器。
@@ -63,6 +75,8 @@ namespace Anchor.GameFlow
             EventKit.Type.Register<WeekResolvedEvent>(OnWeekResolved);
             EventKit.Type.Register<MonthSettledEvent>(OnMonthSettled);
             EventKit.Type.Register<GameEndingSelectedEvent>(OnEndingSelected);
+            EventKit.Type.Register<BudgetShopBuffOffersRefreshedEvent>(OnBudgetShopBuffOffersRefreshed);
+            EventKit.Type.Register<BuffPurchasedEvent>(OnBuffPurchased);
             EventKit.Type.Register<CharacterAttributeChangedEvent>(OnPlayerAttributeChanged);
         }
 
@@ -72,6 +86,8 @@ namespace Anchor.GameFlow
             EventKit.Type.UnRegister<WeekResolvedEvent>(OnWeekResolved);
             EventKit.Type.UnRegister<MonthSettledEvent>(OnMonthSettled);
             EventKit.Type.UnRegister<GameEndingSelectedEvent>(OnEndingSelected);
+            EventKit.Type.UnRegister<BudgetShopBuffOffersRefreshedEvent>(OnBudgetShopBuffOffersRefreshed);
+            EventKit.Type.UnRegister<BuffPurchasedEvent>(OnBuffPurchased);
             EventKit.Type.UnRegister<CharacterAttributeChangedEvent>(OnPlayerAttributeChanged);
         }
 
@@ -108,6 +124,31 @@ namespace Anchor.GameFlow
             mController?.ConfirmBudgetShop();
         }
 
+        public IReadOnlyList<BuffRow> RefreshBudgetShopBuffOffers(
+            int count = GameFlowController.DefaultBudgetShopBuffOfferCount)
+        {
+            EnsureController();
+            return mController.RefreshBudgetShopBuffOffers(count);
+        }
+
+        public bool CanPurchaseBudgetShopBuff(int buffId)
+        {
+            EnsureController();
+            return mController.CanPurchaseBudgetShopBuff(buffId);
+        }
+
+        public bool TryPurchaseBudgetShopBuff(int buffId)
+        {
+            EnsureController();
+            return mController.TryPurchaseBudgetShopBuff(buffId, out _);
+        }
+
+        public bool TryPurchaseBudgetShopBuff(int buffId, out BuffPurchaseResult result)
+        {
+            EnsureController();
+            return mController.TryPurchaseBudgetShopBuff(buffId, out result);
+        }
+
         [ContextMenu("结束本周行动")]
         public void FinishWeekAction()
         {
@@ -136,19 +177,9 @@ namespace Anchor.GameFlow
             return TryAllocateActionPoints(GameDevelopmentTrack.Art, points);
         }
 
-        public bool TryAllocateDesign(int points)
+        public bool TryAllocateAudio(int points)
         {
-            return TryAllocateActionPoints(GameDevelopmentTrack.Design, points);
-        }
-
-        public bool TryAllocateTesting(int points)
-        {
-            return TryAllocateActionPoints(GameDevelopmentTrack.Testing, points);
-        }
-
-        public bool TryAllocateMarketing(int points)
-        {
-            return TryAllocateActionPoints(GameDevelopmentTrack.Marketing, points);
+            return TryAllocateActionPoints(GameDevelopmentTrack.Audio, points);
         }
 
         private void EnsureController()
@@ -170,7 +201,11 @@ namespace Anchor.GameFlow
             };
 
             var attributeCatalog = new CharacterAttributeCatalog(GameConfigs.Tables.TbplayerAttribute.DataList);
-            mController = new GameFlowController(attributeCatalog, settings, mAutoAdvanceInteractiveStates);
+            mController = new GameFlowController(
+                attributeCatalog,
+                settings,
+                mAutoAdvanceInteractiveStates,
+                GameConfigs.Tables.Tbbuff.DataList);
         }
 
         private static void EnsureResKitProvider()
@@ -220,6 +255,27 @@ namespace Anchor.GameFlow
             }
 
             Debug.Log($"[游戏流程] 结局：{flowEvent.Result.DisplayName}（{flowEvent.Result.EndingId}）");
+        }
+
+        private void OnBudgetShopBuffOffersRefreshed(BudgetShopBuffOffersRefreshedEvent flowEvent)
+        {
+            if (!mLogEvents || flowEvent.Blackboard != mController?.Blackboard)
+            {
+                return;
+            }
+
+            Debug.Log($"[游戏流程] 月初商店候选 Buff：{flowEvent.Offers.Count}");
+        }
+
+        private void OnBuffPurchased(BuffPurchasedEvent flowEvent)
+        {
+            if (!mLogEvents || flowEvent.Blackboard != mController?.Blackboard || !flowEvent.Result.Succeeded)
+            {
+                return;
+            }
+
+            var buff = flowEvent.Result.Buff;
+            Debug.Log($"[游戏流程] 购买 Buff：{buff.Title}（{buff.Id}），花费 {flowEvent.Result.Cost}");
         }
 
         private void OnPlayerAttributeChanged(CharacterAttributeChangedEvent flowEvent)

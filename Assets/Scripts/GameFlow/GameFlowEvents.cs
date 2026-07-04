@@ -1,3 +1,8 @@
+using System.Collections.Generic;
+using Anchor.GameFlow.Buffs;
+
+using BuffRow = Anchor.Config.game.buff;
+
 namespace Anchor.GameFlow
 {
     public readonly struct GameFlowStateChangedEvent
@@ -42,6 +47,30 @@ namespace Anchor.GameFlow
         public readonly EndingResult Result;
 
         public GameEndingSelectedEvent(GameFlowBlackboard blackboard, EndingResult result)
+        {
+            Blackboard = blackboard;
+            Result = result;
+        }
+    }
+
+    public readonly struct BudgetShopBuffOffersRefreshedEvent
+    {
+        public readonly GameFlowBlackboard Blackboard;
+        public readonly IReadOnlyList<BuffRow> Offers;
+
+        public BudgetShopBuffOffersRefreshedEvent(GameFlowBlackboard blackboard, IReadOnlyList<BuffRow> offers)
+        {
+            Blackboard = blackboard;
+            Offers = offers;
+        }
+    }
+
+    public readonly struct BuffPurchasedEvent
+    {
+        public readonly GameFlowBlackboard Blackboard;
+        public readonly BuffPurchaseResult Result;
+
+        public BuffPurchasedEvent(GameFlowBlackboard blackboard, BuffPurchaseResult result)
         {
             Blackboard = blackboard;
             Result = result;

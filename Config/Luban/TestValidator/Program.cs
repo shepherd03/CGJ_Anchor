@@ -61,14 +61,14 @@ static void ValidateEvents(
         CheckId("Event", row.Id, ids, errors);
         CheckRequired("Event", row.Id, "title", row.Title, errors);
         CheckRequired("Event", row.Id, "content", row.Content, errors);
-        CheckCost("Event", row.Id, row.Cost, errors);
         CheckRange("Event", row.Id, "ratio", row.Ratio, 0f, 1f, errors);
         CheckAttributePairs("Event", row.Id, "yesEffects", row.YesEffects, playerAttributeIds, errors);
         CheckAttributePairs("Event", row.Id, "noEffects", row.NoEffects, playerAttributeIds, errors);
-        CheckAttributePairs("Event", row.Id, "triggerConditions", row.TriggerConditions, playerAttributeIds, errors);
+        CheckAttributePairs("Event", row.Id, "triggerGreaterOrEqualConditions", row.TriggerGreaterOrEqualConditions, playerAttributeIds, errors);
+        CheckAttributePairs("Event", row.Id, "triggerLessThanConditions", row.TriggerLessThanConditions, playerAttributeIds, errors);
 
         output.AppendLine(
-            $"  Event[{row.Id}] title={row.Title}, type={row.Type}, ratio={row.Ratio}, cost={row.Cost}, yes={FormatPairs(row.YesEffects)}, no={FormatPairs(row.NoEffects)}, triggers={FormatPairs(row.TriggerConditions)}");
+            $"  Event[{row.Id}] title={row.Title}, ratio={row.Ratio}, yes={FormatPairs(row.YesEffects)}, no={FormatPairs(row.NoEffects)}, triggerGe={FormatPairs(row.TriggerGreaterOrEqualConditions)}, triggerLt={FormatPairs(row.TriggerLessThanConditions)}");
     }
 }
 

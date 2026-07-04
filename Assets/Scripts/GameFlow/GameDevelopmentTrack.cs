@@ -16,18 +16,8 @@ namespace Anchor.GameFlow
         Art,
 
         /// <summary>
-        /// 设计开发投入，主要影响氛围表现和质量分，同时可能增加 Bug。
+        /// 音效开发投入，主要影响氛围表现和质量分，同时可能增加 Bug。
         /// </summary>
-        Design,
-
-        /// <summary>
-        /// 测试投入，主要用于降低 Bug。
-        /// </summary>
-        Testing,
-
-        /// <summary>
-        /// 宣传投入，主要影响愿望单增长。
-        /// </summary>
-        Marketing
+        Audio
     }
 }

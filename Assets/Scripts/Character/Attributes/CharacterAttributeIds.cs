@@ -85,5 +85,14 @@ namespace Anchor.Character.Attributes
 
         /// <summary>每回合可消费的固定强化费用；为 0 时不弹出选择。</summary>
         public const int WeeklyFixedUpgradeCost = 1027;
+
+        /// <summary>每周结算时应用的 Bug 值变化量。</summary>
+        public const int WeeklyBugDelta = 1028;
+
+        /// <summary>每周结算时应用的画面值变化量。</summary>
+        public const int WeeklyVisualDelta = 1029;
+
+        /// <summary>每周结算时应用的氛围值变化量。</summary>
+        public const int WeeklyAtmosphereDelta = 1030;
     }
 }

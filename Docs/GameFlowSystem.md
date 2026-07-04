@@ -72,9 +72,7 @@ runner.StartNewGame();
 runner.ConfirmBudgetShop();
 runner.TryAllocateProgram(1);
 runner.TryAllocateArt(1);
-runner.TryAllocateDesign(1);
-runner.TryAllocateTesting(1);
-runner.TryAllocateMarketing(1);
+runner.TryAllocateAudio(1);
 runner.FinishWeekAction();
 runner.ContinueFlow();
 ```
@@ -86,9 +84,7 @@ runner.ContinueFlow();
 月初商店确认按钮         ConfirmBudgetShop
 程序房间投点按钮         TryAllocateProgram
 美术房间投点按钮         TryAllocateArt
-设计房间投点按钮         TryAllocateDesign
-测试房间投点按钮         TryAllocateTesting
-宣传房间投点按钮         TryAllocateMarketing
+音效房间投点按钮         TryAllocateAudio
 本周结束按钮             FinishWeekAction
 周结算/月结算继续按钮    ContinueFlow
 ```
@@ -344,9 +340,7 @@ GameFlowResolveService.cs
 ```text
 Program   影响质量，也会增加 Bug
 Art       影响画面和质量
-Design    影响氛围和质量，也会增加 Bug
-Testing   降低 Bug
-Marketing 增加愿望单
+Audio     影响氛围和质量，也会增加 Bug
 ```
 
 当前月结算会根据：

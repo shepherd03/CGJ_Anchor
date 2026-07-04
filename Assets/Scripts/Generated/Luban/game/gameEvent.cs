@@ -19,12 +19,11 @@ public sealed partial class gameEvent : Luban.BeanBase
         Id = _buf.ReadInt();
         Title = _buf.ReadString();
         Content = _buf.ReadString();
-        Type = _buf.ReadInt();
         {int __n0 = _buf.ReadSize(); YesEffects = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} YesEffects[__index0] = __e0;}}
         {int __n0 = _buf.ReadSize(); NoEffects = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} NoEffects[__index0] = __e0;}}
-        {int __n0 = _buf.ReadSize(); TriggerConditions = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} TriggerConditions[__index0] = __e0;}}
+        {int __n0 = _buf.ReadSize(); TriggerGreaterOrEqualConditions = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} TriggerGreaterOrEqualConditions[__index0] = __e0;}}
+        {int __n0 = _buf.ReadSize(); TriggerLessThanConditions = new int[__n0][];for(var __index0 = 0 ; __index0 < __n0 ; __index0++) { int[] __e0;{int __n1 = _buf.ReadSize(); __e0 = new int[__n1];for(var __index1 = 0 ; __index1 < __n1 ; __index1++) { int __e1;__e1 = _buf.ReadInt(); __e0[__index1] = __e1;}} TriggerLessThanConditions[__index0] = __e0;}}
         Ratio = _buf.ReadFloat();
-        Cost = _buf.ReadInt();
     }
 
     public static gameEvent DeserializegameEvent(ByteBuf _buf)
@@ -45,10 +44,6 @@ public sealed partial class gameEvent : Luban.BeanBase
     /// </summary>
     public readonly string Content;
     /// <summary>
-    /// 事件类型：0=选择Y，1=选择N，2=触发式
-    /// </summary>
-    public readonly int Type;
-    /// <summary>
     /// 选择Y后的属性修改，格式[[属性ID,值]]
     /// </summary>
     public readonly int[][] YesEffects;
@@ -57,17 +52,17 @@ public sealed partial class gameEvent : Luban.BeanBase
     /// </summary>
     public readonly int[][] NoEffects;
     /// <summary>
-    /// 触发条件，格式[[属性ID,阈值]]；阈值正负语义由运行时解释
+    /// 大于等于触发条件，格式[[属性ID,阈值]]；玩家属性 &gt;= 阈值时满足
     /// </summary>
-    public readonly int[][] TriggerConditions;
+    public readonly int[][] TriggerGreaterOrEqualConditions;
+    /// <summary>
+    /// 小于触发条件，格式[[属性ID,阈值]]；玩家属性 &lt; 阈值时满足
+    /// </summary>
+    public readonly int[][] TriggerLessThanConditions;
     /// <summary>
     /// Ratio（随机事件的触发概率）
     /// </summary>
     public readonly float Ratio;
-    /// <summary>
-    /// Cost（花费）
-    /// </summary>
-    public readonly int Cost;
    
     public const int __ID__ = 1680914124;
     public override int GetTypeId() => __ID__;
@@ -82,12 +77,11 @@ public sealed partial class gameEvent : Luban.BeanBase
         + "id:" + Id + ","
         + "title:" + Title + ","
         + "content:" + Content + ","
-        + "type:" + Type + ","
         + "yesEffects:" + Luban.StringUtil.CollectionToString(YesEffects) + ","
         + "noEffects:" + Luban.StringUtil.CollectionToString(NoEffects) + ","
-        + "triggerConditions:" + Luban.StringUtil.CollectionToString(TriggerConditions) + ","
+        + "triggerGreaterOrEqualConditions:" + Luban.StringUtil.CollectionToString(TriggerGreaterOrEqualConditions) + ","
+        + "triggerLessThanConditions:" + Luban.StringUtil.CollectionToString(TriggerLessThanConditions) + ","
         + "ratio:" + Ratio + ","
-        + "cost:" + Cost + ","
         + "}";
     }
 }
