@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "com.coplaydev.unity-mcp": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#main",
+    "com.code-philosophy.luban": "https://github.com/focus-creative-games/luban_unity.git#main",
     "com.hinatayoki.yokiframe": "https://github.com/HinataYoki/YokiFrame.git",
     "com.unity.cinemachine": "2.10.7",
     "com.unity.collab-proxy": "2.12.4",

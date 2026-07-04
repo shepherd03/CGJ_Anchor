@@ -117,3 +117,7 @@ InitTestScene*.unity*
 
 # Local YokiFrame runtime state
 /.yokiframe/
+
+# Local editor/tool caches
+/.idea/
+/.codex/tmp/
