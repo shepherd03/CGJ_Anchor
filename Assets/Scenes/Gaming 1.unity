@@ -301,7 +301,7 @@ Camera:
   far clip plane: 1000
   field of view: 34
   orthographic: 1
-  orthographic size: 5
+  orthographic size: 8.31
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -326,7 +326,7 @@ Transform:
   m_GameObject: {fileID: 519420028}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -7.641616, y: 0.066907644, z: -10.022238}
+  m_LocalPosition: {x: -7.6416163, y: -2.7830923, z: -10.022238}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -398,6 +398,7 @@ Transform:
   m_Children:
   - {fileID: 1987007029}
   - {fileID: 190892468}
+  - {fileID: 1639463719}
   m_Father: {fileID: 1789827226}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &542571184
@@ -1026,12 +1027,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1639463718}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.086, z: -10}
+  m_LocalScale: {x: 0.13333333, y: 0.06666666, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1716886762}
+  m_Father: {fileID: 542571183}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1639463720
 MonoBehaviour:
@@ -1046,9 +1047,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 519420031}
-  enableCameraBounds: 1
-  mainVirtualCamera: {fileID: 2023819105}
-  containedVirtualCamera: {fileID: 190892469}
+  enableCubeBounds: 1
+  cubeSideLength: 1
   enableFollow: 1
   useCurrentZAsPlane: 1
   worldPlaneZ: 0
@@ -1174,7 +1174,6 @@ Transform:
   m_Children:
   - {fileID: 2023788025}
   - {fileID: 1789827226}
-  - {fileID: 1639463719}
   - {fileID: 2023819104}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1196,6 +1195,7 @@ MonoBehaviour:
   - bindingName: 
     button: {fileID: 776702199}
     virtualCamera: {fileID: 190892469}
+    followTarget: {fileID: 1639463719}
     enabled: 1
   activePriority: 20
   inactivePriority: 0

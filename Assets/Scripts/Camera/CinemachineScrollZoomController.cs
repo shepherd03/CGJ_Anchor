@@ -23,12 +23,16 @@ public class CinemachineScrollZoomController : MonoBehaviour
         [SerializeField, Tooltip("点击按钮后切换到的 Cinemachine Virtual Camera。")]
         private CinemachineVirtualCamera virtualCamera;
 
+        [SerializeField, Tooltip("点击按钮后让虚拟镜头 Follow 的目标。留空则保留该虚拟镜头当前 Follow。")]
+        private Transform followTarget;
+
         [SerializeField, Tooltip("是否启用这一组按钮和镜头绑定。关闭后点击不会切换镜头。")]
         private bool enabled = true;
 
         public string BindingName => bindingName;
         public Button Button => button;
         public CinemachineVirtualCamera VirtualCamera => virtualCamera;
+        public Transform FollowTarget => followTarget;
         public bool Enabled => enabled;
     }
 
@@ -140,7 +144,7 @@ public class CinemachineScrollZoomController : MonoBehaviour
     }
 
     /// <summary>
-    /// 按绑定数组下标切换到对应虚拟镜头，可用于手动绑定 Button OnClick。
+    /// 按绑定数组下标应用 Follow 目标并切换到对应虚拟镜头，可用于手动绑定 Button OnClick。
     /// </summary>
     public void SwitchToCameraByIndex(int index)
     {
@@ -163,6 +167,7 @@ public class CinemachineScrollZoomController : MonoBehaviour
             return;
         }
 
+        ApplyBindingFollowTarget(binding);
         SwitchToCamera(binding.VirtualCamera);
     }
 
@@ -197,6 +202,19 @@ public class CinemachineScrollZoomController : MonoBehaviour
         currentVirtualCamera = targetCamera;
 
         RefreshButtonInteractable();
+    }
+
+    /// <summary>
+    /// 按按钮绑定配置设置虚拟镜头 Follow；未配置跟随目标时保留原 Follow。
+    /// </summary>
+    private static void ApplyBindingFollowTarget(CameraButtonBinding binding)
+    {
+        if (binding == null || binding.VirtualCamera == null || binding.FollowTarget == null)
+        {
+            return;
+        }
+
+        binding.VirtualCamera.Follow = binding.FollowTarget;
     }
 
     /// <summary>
