@@ -7,6 +7,8 @@ using EventRow = Anchor.Config.game.gameEvent;
 using PlayerAttributeRow = Anchor.Config.game.playerAttribute;
 
 const int DynamicQualityAttributeId = 1010;
+const int CurrentMonthWeekIndexAttributeId = 1051;
+const int TotalWeekIndexAttributeId = 1052;
 
 var root = FindProjectRoot(AppContext.BaseDirectory);
 var dataDir = Path.Combine(root, "Assets", "Resources", "Config", "Luban", "Bin");
@@ -18,9 +20,18 @@ output.AppendLine($"DataDir: {dataDir}");
 
 var tables = new Tables(LoadTableBytes);
 var playerAttributeIds = ValidatePlayerAttributes(tables.TbplayerAttribute.DataList, errors, output);
-var readableAttributeIds = new HashSet<int>(playerAttributeIds) { DynamicQualityAttributeId };
-ValidateEvents(tables.TbgameEvent.DataList, playerAttributeIds, readableAttributeIds, errors, output);
-ValidateBuffs(tables.Tbbuff.DataList, playerAttributeIds, errors, output);
+var writableAttributeIds = new HashSet<int>(playerAttributeIds);
+writableAttributeIds.Remove(CurrentMonthWeekIndexAttributeId);
+writableAttributeIds.Remove(TotalWeekIndexAttributeId);
+var readableAttributeIds = new HashSet<int>(playerAttributeIds)
+{
+    DynamicQualityAttributeId,
+    // Flow progress mirrors are valid for event trigger conditions, but not writable effects.
+    CurrentMonthWeekIndexAttributeId,
+    TotalWeekIndexAttributeId
+};
+ValidateEvents(tables.TbgameEvent.DataList, writableAttributeIds, readableAttributeIds, errors, output);
+ValidateBuffs(tables.Tbbuff.DataList, writableAttributeIds, errors, output);
 
 if (errors.Count > 0)
 {

@@ -35,6 +35,12 @@ namespace Anchor.Character.Attributes
         /// <summary>动态质量分，运行时由画面、氛围和 Bug 推导，不在玩家属性表中存储。</summary>
         public const int Quality = 1010;
 
+        /// <summary>当前月内第几周，只读流程镜像；配表可用于条件判断，不允许作为效果修改。</summary>
+        public const int CurrentMonthWeekIndex = 1051;
+
+        /// <summary>全局第几周，只读流程镜像；配表可用于条件判断，不允许作为效果修改。</summary>
+        public const int TotalWeekIndex = 1052;
+
         /// <summary>进入程序房间触发选项时，选择消耗 1 点行动点获得的愿望单数量。</summary>
         public const int ProgramRoomOneActionReward = 1011;
 
@@ -133,5 +139,14 @@ namespace Anchor.Character.Attributes
 
         /// <summary>当前商店阶段剩余可购买 Buff 的次数。</summary>
         public const int CurrentBudgetShopPurchaseCount = 1050;
+
+        /// <summary>本周每消耗 1 点程序 AP 时额外应用的 Bug 变化；进入下一周自动清零。</summary>
+        public const int WeeklyProgramActionBugDelta = 1053;
+
+        /// <summary>本周每消耗 1 点美术 AP 时额外应用的画面变化；进入下一周自动清零。</summary>
+        public const int WeeklyArtActionVisualDelta = 1054;
+
+        /// <summary>本周每消耗 1 点音频 AP 时额外应用的氛围变化；进入下一周自动清零。</summary>
+        public const int WeeklyAudioActionAtmosphereDelta = 1055;
     }
 }
