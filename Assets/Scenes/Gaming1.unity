@@ -426,7 +426,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   nextWeekButton: {fileID: 12819897}
-  bulletScreenController: {fileID: 1863866710}
 --- !u!1 &322385679
 GameObject:
   m_ObjectHideFlags: 0
@@ -1083,6 +1082,7 @@ GameObject:
   - component: {fileID: 685587467}
   - component: {fileID: 685587466}
   - component: {fileID: 685587465}
+  - component: {fileID: 685587469}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -1168,8 +1168,8 @@ RectTransform:
   - {fileID: 322385680}
   - {fileID: 1076406469}
   - {fileID: 293248967}
-  - {fileID: 1863866709}
   - {fileID: 1476275333}
+  - {fileID: 1863866709}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1177,6 +1177,24 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &685587469
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 685587464}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8fe065d0e49f24582bdbe3732320239d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  beginPanelManager: {fileID: 322385683}
+  windowShopPanelManager: {fileID: 1076406473}
+  mainPanelManager: {fileID: 293248969}
+  weekPanelManager: {fileID: 1476275336}
+  bulletScreenController: {fileID: 1863866710}
+  bulletScreenDuration: 4
 --- !u!114 &776702199 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 7997375233745005683, guid: c42715f72a8b8449fb0ec8286fc5ea7b, type: 3}

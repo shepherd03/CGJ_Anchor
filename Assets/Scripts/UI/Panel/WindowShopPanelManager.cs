@@ -1,4 +1,3 @@
-using Anchor.GameFlow;
 using Anchor.Window;
 using UnityEngine;
 using UnityEngine.UI;
@@ -15,8 +14,6 @@ namespace Anchor.UI.Panel
         [Header("Button")]
         [SerializeField, Tooltip("点击后关闭当前 BuffWindow 的按钮。")]
         private Button closeButton;
-
-        private MainPanelManager mainPanelManager;
 
         /// <summary>
         /// Panel 启用时注册关闭按钮点击事件。
@@ -88,74 +85,11 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 点击关闭按钮后关闭 BuffWindow，并打开 MainPanel。
+        /// 点击关闭按钮后交给流程 UI 编排器推进下一步。
         /// </summary>
         private void OnCloseButtonClicked()
         {
-            if (!TryConfirmBudgetShop())
-            {
-                return;
-            }
-
-            Close();
-            OpenMainPanel();
-        }
-
-        /// <summary>
-        /// 在月初商店阶段确认 Buff 选择，让流程进入周行动阶段。
-        /// </summary>
-        private bool TryConfirmBudgetShop()
-        {
-            // 通过 GameFlowRunner 单例确认流程，不再运行时扫描场景。
-            GameFlowRunner runner = GameFlowRunner.Instance;
-
-            if (runner == null || runner.Controller == null)
-            {
-                Debug.LogWarning($"{nameof(WindowShopPanelManager)} cannot find active {nameof(GameFlowRunner)} instance.", this);
-                return false;
-            }
-
-            GameFlowState currentState = runner.Controller.CurrentState;
-            if (currentState == GameFlowState.BudgetShop)
-            {
-                runner.ConfirmBudgetShop();
-                return true;
-            }
-
-            if (currentState == GameFlowState.WeekAction)
-            {
-                return true;
-            }
-
-            Debug.LogWarning($"{nameof(WindowShopPanelManager)} cannot confirm budget shop during {currentState}.", this);
-            return false;
-        }
-
-        /// <summary>
-        /// 打开 MainPanel。
-        /// </summary>
-        private void OpenMainPanel()
-        {
-            EnsureMainPanelManager();
-
-            if (mainPanelManager == null)
-            {
-                Debug.LogWarning($"{nameof(WindowShopPanelManager)} cannot find {nameof(MainPanelManager)} in the scene.", this);
-                return;
-            }
-
-            mainPanelManager.Open();
-        }
-
-        /// <summary>
-        /// 查找并缓存场景中的 MainPanel 管理器，包含初始未激活的面板。
-        /// </summary>
-        private void EnsureMainPanelManager()
-        {
-            if (mainPanelManager == null)
-            {
-                mainPanelManager = FindObjectOfType<MainPanelManager>(true);
-            }
+            GameFlowPanelCoordinator.GetOrCreate().NextStep();
         }
 
         /// <summary>
