@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="..\..\..\Assets\Scripts\Generated\Luban\Tables.cs" Link="Generated\Tables.cs" />
+    <Compile Include="..\..\..\Assets\Scripts\Generated\Luban\demo\*.cs" Link="Generated\demo\%(Filename)%(Extension)" />
+    <Compile Include="..\..\..\Assets\Scripts\Generated\Luban\game\*.cs" Link="Generated\game\%(Filename)%(Extension)" />
+    <Compile Include="..\..\..\Library\PackageCache\com.code-philosophy.luban@061314200e\Runtime\BeanBase.cs" Link="LubanRuntime\BeanBase.cs" />
+    <Compile Include="..\..\..\Library\PackageCache\com.code-philosophy.luban@061314200e\Runtime\ByteBuf.cs" Link="LubanRuntime\ByteBuf.cs" />
+    <Compile Include="..\..\..\Library\PackageCache\com.code-philosophy.luban@061314200e\Runtime\StringUtil.cs" Link="LubanRuntime\StringUtil.cs" />
+  </ItemGroup>
+</Project>

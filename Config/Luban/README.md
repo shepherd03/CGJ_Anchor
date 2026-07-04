@@ -40,6 +40,18 @@ export_tables.cmd
 .\export_tables.ps1
 ```
 
+导出完成后可执行表格校验：
+
+```powershell
+.\test_tables.ps1
+```
+
+或直接双击：
+
+```bat
+test_tables.cmd
+```
+
 在仓库根目录执行：
 
 ```powershell
