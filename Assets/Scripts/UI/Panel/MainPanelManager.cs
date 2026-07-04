@@ -1,3 +1,4 @@
+using System;
 using Anchor.Character.Attributes;
 using Anchor.GameFlow;
 using TMPro;
@@ -36,6 +37,9 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("点击后结束本周行动并关闭 MainPanel 的按钮。")]
         private Button nextWeekButton;
 
+        // 当前 MainPanel 关闭后要交还给流程编排器执行的回调。
+        private Action onClosed;
+
         /// <summary>
         /// Panel 启用时注册下一周按钮点击事件和流程数据刷新事件。
         /// </summary>
@@ -56,10 +60,12 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 打开 MainPanel。
+        /// 打开 MainPanel，并记录关闭后继续流程的回调。
         /// </summary>
-        public void Open()
+        public void Open(Action closedCallback = null)
         {
+            onClosed = closedCallback;
+
             if (!gameObject.activeSelf)
             {
                 gameObject.SetActive(true);
@@ -69,19 +75,39 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 关闭 MainPanel。
+        /// 关闭 MainPanel，并清理关闭回调。
         /// </summary>
         public void Close()
         {
+            onClosed = null;
             gameObject.SetActive(false);
         }
 
         /// <summary>
-        /// 点击下一周按钮后交给流程 UI 编排器推进下一步。
+        /// 点击下一周按钮后关闭 MainPanel，并在关闭后通知流程编排器继续。
         /// </summary>
         private void OnNextWeekButtonClicked()
         {
-            GameFlowPanelCoordinator.GetOrCreate().NextStep();
+            CloseAndNotify();
+        }
+
+        /// <summary>
+        /// 关闭 MainPanel，并触发本次打开时注入的关闭回调。
+        /// </summary>
+        private void CloseAndNotify()
+        {
+            gameObject.SetActive(false);
+            NotifyClosed();
+        }
+
+        /// <summary>
+        /// 执行并清理 MainPanel 关闭回调，防止重复推进流程。
+        /// </summary>
+        private void NotifyClosed()
+        {
+            Action closedCallback = onClosed;
+            onClosed = null;
+            closedCallback?.Invoke();
         }
 
         /// <summary>

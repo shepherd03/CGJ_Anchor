@@ -1,3 +1,4 @@
+using System;
 using DG.Tweening;
 using UnityEngine;
 
@@ -115,11 +116,20 @@ namespace Anchor.Window
         [ContextMenu("Close")]
         public void Close()
         {
+            Close(null);
+        }
+
+        /// <summary>
+        /// 关闭弹窗入口：播放收起动画，隐藏完成后通知外部继续编排流程。
+        /// </summary>
+        public void Close(Action onClosed)
+        {
             EnsureRectTransform();
             ClampSettings();
 
             if (!gameObject.activeSelf)
             {
+                onClosed?.Invoke();
                 return;
             }
 
@@ -128,6 +138,7 @@ namespace Anchor.Window
             if (closeDuration <= 0f)
             {
                 gameObject.SetActive(false);
+                onClosed?.Invoke();
                 return;
             }
 
@@ -136,7 +147,11 @@ namespace Anchor.Window
                 .SetEase(closeEase)
                 .SetUpdate(ignoreTimeScale)
                 .SetTarget(this)
-                .OnComplete(() => gameObject.SetActive(false))
+                .OnComplete(() =>
+                {
+                    gameObject.SetActive(false);
+                    onClosed?.Invoke();
+                })
                 .OnKill(() => dropTween = null);
         }
 

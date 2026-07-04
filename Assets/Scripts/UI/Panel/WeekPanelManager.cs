@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,6 +10,9 @@ namespace Anchor.UI.Panel
         [Header("Button")]
         [SerializeField, Tooltip("点击后关闭当前 WeekPanel 的按钮。")]
         private Button closeButton;
+
+        // 当前 WeekPanel 关闭后要交还给流程编排器执行的回调。
+        private Action onClosed;
 
         /// <summary>
         /// Panel 启用时注册关闭按钮点击事件。
@@ -27,10 +31,12 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 外部打开 WeekPanel 的入口。
+        /// 外部打开 WeekPanel 的入口，并记录关闭后继续流程的回调。
         /// </summary>
-        public void Open()
+        public void Open(Action closedCallback = null)
         {
+            onClosed = closedCallback;
+
             if (!gameObject.activeSelf)
             {
                 gameObject.SetActive(true);
@@ -38,11 +44,31 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 关闭 WeekPanel。
+        /// 关闭 WeekPanel，并清理关闭回调。
         /// </summary>
         public void Close()
         {
+            onClosed = null;
             gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// 关闭 WeekPanel，并触发本次打开时注入的关闭回调。
+        /// </summary>
+        private void CloseAndNotify()
+        {
+            gameObject.SetActive(false);
+            NotifyClosed();
+        }
+
+        /// <summary>
+        /// 执行并清理 WeekPanel 关闭回调，防止重复推进流程。
+        /// </summary>
+        private void NotifyClosed()
+        {
+            Action closedCallback = onClosed;
+            onClosed = null;
+            closedCallback?.Invoke();
         }
 
         /// <summary>
@@ -57,7 +83,8 @@ namespace Anchor.UI.Panel
             }
 
             closeButton.onClick.RemoveListener(Close);
-            closeButton.onClick.AddListener(Close);
+            closeButton.onClick.RemoveListener(CloseAndNotify);
+            closeButton.onClick.AddListener(CloseAndNotify);
         }
 
         /// <summary>
@@ -71,6 +98,7 @@ namespace Anchor.UI.Panel
             }
 
             closeButton.onClick.RemoveListener(Close);
+            closeButton.onClick.RemoveListener(CloseAndNotify);
         }
 
         /// <summary>

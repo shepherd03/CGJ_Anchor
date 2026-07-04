@@ -1,16 +1,17 @@
+using System;
 using System.Collections;
 using Anchor.GameFlow;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using YokiFrame;
 
 using EventRow = Anchor.Config.game.gameEvent;
 
 namespace Anchor.UI.Panel
 {
     [DisallowMultipleComponent]
+    [RequireComponent(typeof(CanvasGroup))]
     public sealed class EventPanelManager : PanelManagerSingleton<EventPanelManager>
     {
         [Header("Panel")]
@@ -43,35 +44,42 @@ namespace Anchor.UI.Panel
         [SerializeField] private AudioClip openSound;
         [SerializeField, Range(0f, 1f)] private float openSoundVolume = 1f;
 
+        // 记录编辑器里摆好的动画基准位置和缩放。
         private Vector3 authoredScale;
         private Vector2 authoredIdlePosition;
+
+        // 当前面板动画、打字机协程和关闭回调。
         private Sequence panelSequence;
         private Coroutine typingCoroutine;
-        private EventRow queuedEvent;
+        private Action onClosed;
+
+        // 当前显示状态，避免重复显示和重复结算。
+        private bool hasCapturedAuthoredLayout;
         private bool isVisible;
         private bool isResolving;
 
+        /// <summary>
+        /// 初始化 EventPanel 引用和初始隐藏状态。
+        /// </summary>
         protected override void Awake()
         {
             base.Awake();
             CacheReferences();
             CaptureAuthoredLayout();
             HideImmediate();
-            EventKit.Type.Register<WeekGameEventTriggeredEvent>(OnWeekGameEventTriggered);
         }
 
-        private IEnumerator Start()
-        {
-            // Covers events emitted from another object's Awake before this listener registered.
-            yield return null;
-            ShowCurrentEventIfAny();
-        }
-
+        /// <summary>
+        /// Panel 启用时注册选项按钮点击事件。
+        /// </summary>
         private void OnEnable()
         {
             RegisterButtons();
         }
 
+        /// <summary>
+        /// Panel 关闭时注销按钮、停止动画和打字机。
+        /// </summary>
         private void OnDisable()
         {
             UnregisterButtons();
@@ -79,41 +87,83 @@ namespace Anchor.UI.Panel
             StopTypewriter();
         }
 
+        /// <summary>
+        /// 销毁时清理按钮监听、动画和单例引用。
+        /// </summary>
         protected override void OnDestroy()
         {
-            EventKit.Type.UnRegister<WeekGameEventTriggeredEvent>(OnWeekGameEventTriggered);
             UnregisterButtons();
             KillAnimation();
             StopTypewriter();
             base.OnDestroy();
         }
 
-        public void ShowCurrentEventIfAny()
+        /// <summary>
+        /// 从当前流程中读取周事件，并打开 EventPanel。
+        /// </summary>
+        public bool TryShowCurrentEvent(Action closedCallback = null)
         {
             GameFlowRunner runner = GameFlowRunner.Instance;
-            if (runner != null && runner.Controller != null && runner.Controller.CurrentState == GameFlowState.WeekEvent)
-                Open(runner.CurrentWeekGameEvent);
+            if (runner == null || runner.Controller == null || runner.Controller.CurrentState != GameFlowState.WeekEvent)
+            {
+                return false;
+            }
+
+            EventRow currentEvent = runner.CurrentWeekGameEvent;
+            if (currentEvent == null || isVisible)
+            {
+                return false;
+            }
+
+            return Open(currentEvent, closedCallback);
         }
 
-        public void TryShowCurrentEvent()
+        /// <summary>
+        /// 兼容旧调用：只展示事件内容，不注入关闭回调。
+        /// </summary>
+        public void Show(EventRow eventRow)
         {
-            ShowCurrentEventIfAny();
+            Open(eventRow, null);
         }
 
-        public void Open(EventRow eventRow)
+        /// <summary>
+        /// 强制关闭 EventPanel，并清理关闭回调。
+        /// </summary>
+        public void Close()
         {
-            if (eventRow == null)
-                return;
-
-            CacheReferences();
-            Populate(eventRow);
+            onClosed = null;
             KillAnimation();
             StopTypewriter();
+            HideImmediate();
+        }
+
+        /// <summary>
+        /// 打开 EventPanel，并记录关闭后继续流程的回调。
+        /// </summary>
+        public bool Open(EventRow eventRow, Action closedCallback = null)
+        {
+            if (eventRow == null)
+            {
+                return false;
+            }
+
+            if (!gameObject.activeSelf)
+            {
+                gameObject.SetActive(true);
+            }
+
+            onClosed = closedCallback;
+            CacheReferences();
+            EnsureAuthoredLayoutCaptured();
+            KillAnimation();
+            StopTypewriter();
+            Populate(eventRow);
 
             isVisible = true;
             isResolving = false;
             SetButtonsInteractable(false);
             canvasGroup.alpha = 0f;
+            canvasGroup.interactable = true;
             canvasGroup.blocksRaycasts = true;
             panelRoot.localScale = authoredScale * popupStartScale;
             idle.anchoredPosition = authoredIdlePosition + Vector2.left * idleSlideDistance;
@@ -130,43 +180,43 @@ namespace Anchor.UI.Panel
             });
             panelSequence.Append(idle.DOAnchorPos(authoredIdlePosition, idleSlideDuration, true).SetEase(Ease.OutCubic));
             panelSequence.OnComplete(() => panelSequence = null);
+            return true;
         }
 
-        private void OnWeekGameEventTriggered(WeekGameEventTriggeredEvent flowEvent)
-        {
-            if (flowEvent.Event == null)
-                return;
-
-            if (isResolving || panelSequence != null && !isVisible)
-            {
-                queuedEvent = flowEvent.Event;
-                return;
-            }
-
-            Open(flowEvent.Event);
-        }
-
+        /// <summary>
+        /// 玩家点击 Yes 选项时提交肯定选择。
+        /// </summary>
         private void OnYesClicked()
         {
             ResolveChoice(true);
         }
 
+        /// <summary>
+        /// 玩家点击 No 选项时提交否定选择。
+        /// </summary>
         private void OnNoClicked()
         {
             ResolveChoice(false);
         }
 
+        /// <summary>
+        /// 把玩家选择交给流程层处理，成功后关闭面板并等待回调继续编排。
+        /// </summary>
         private void ResolveChoice(bool chooseYes)
         {
             if (!isVisible || isResolving)
+            {
                 return;
+            }
 
             GameFlowRunner runner = GameFlowRunner.Instance;
             if (runner == null)
+            {
+                Debug.LogWarning($"{nameof(EventPanelManager)} cannot find {nameof(GameFlowRunner)} instance.", this);
                 return;
+            }
 
             isResolving = true;
-            queuedEvent = null;
             SetButtonsInteractable(false);
 
             bool accepted = chooseYes
@@ -183,35 +233,48 @@ namespace Anchor.UI.Panel
             CloseAfterChoice();
         }
 
+        /// <summary>
+        /// 播放 EventPanel 关闭动画，动画结束后触发关闭回调。
+        /// </summary>
         private void CloseAfterChoice()
         {
             KillAnimation();
             StopTypewriter();
-            isVisible = false;
+            canvasGroup.interactable = false;
             canvasGroup.blocksRaycasts = false;
 
             panelSequence = DOTween.Sequence().SetTarget(this);
             panelSequence.Append(panelRoot.DOScale(authoredScale * popupStartScale, closeDuration).SetEase(Ease.InBack));
             panelSequence.Join(canvasGroup.DOFade(0f, closeDuration * 0.8f).SetEase(Ease.InQuad));
-            panelSequence.OnComplete(() =>
-            {
-                panelSequence = null;
-                panelRoot.localScale = authoredScale;
-                idle.anchoredPosition = authoredIdlePosition;
-                isResolving = false;
-
-                if (queuedEvent != null)
-                {
-                    EventRow next = queuedEvent;
-                    queuedEvent = null;
-                    Open(next);
-                    return;
-                }
-
-                GameFlowPanelCoordinator.GetOrCreate().ResumeAfterWeekGameEventChoice();
-            });
+            panelSequence.OnComplete(OnCloseAnimationCompleted);
         }
 
+        /// <summary>
+        /// EventPanel 关闭动画完成后恢复布局，并通知流程编排器继续。
+        /// </summary>
+        private void OnCloseAnimationCompleted()
+        {
+            panelSequence = null;
+            isVisible = false;
+            panelRoot.localScale = authoredScale;
+            idle.anchoredPosition = authoredIdlePosition;
+            isResolving = false;
+            NotifyClosed();
+        }
+
+        /// <summary>
+        /// 执行并清理 EventPanel 关闭回调，防止重复推进流程。
+        /// </summary>
+        private void NotifyClosed()
+        {
+            Action closedCallback = onClosed;
+            onClosed = null;
+            closedCallback?.Invoke();
+        }
+
+        /// <summary>
+        /// 用周事件表数据刷新标题、正文和选项文本。
+        /// </summary>
         private void Populate(EventRow eventRow)
         {
             eventName.text = eventRow.Title ?? string.Empty;
@@ -222,6 +285,9 @@ namespace Anchor.UI.Panel
             eventContent.ForceMeshUpdate();
         }
 
+        /// <summary>
+        /// 启动正文打字机效果。
+        /// </summary>
         private void StartTypewriter(string content)
         {
             StopTypewriter();
@@ -239,6 +305,9 @@ namespace Anchor.UI.Panel
             typingCoroutine = StartCoroutine(TypeRoutine(count));
         }
 
+        /// <summary>
+        /// 按配置速度逐字显示正文。
+        /// </summary>
         private IEnumerator TypeRoutine(int totalCharacters)
         {
             float progress = 0f;
@@ -262,37 +331,68 @@ namespace Anchor.UI.Panel
             typingCoroutine = null;
         }
 
+        /// <summary>
+        /// 为本帧新增显示的可见字符播放打字音效。
+        /// </summary>
         private void PlayTypingSounds(int startInclusive, int endExclusive)
         {
             if (audioSource == null || typeSound == null)
+            {
                 return;
+            }
 
             for (int i = startInclusive; i < endExclusive; i++)
             {
                 if (eventContent.textInfo.characterInfo[i].isVisible)
+                {
                     audioSource.PlayOneShot(typeSound, typeSoundVolume);
+                }
             }
         }
 
+        /// <summary>
+        /// 停止当前打字机协程。
+        /// </summary>
         private void StopTypewriter()
         {
             if (typingCoroutine == null)
+            {
                 return;
+            }
 
             StopCoroutine(typingCoroutine);
             typingCoroutine = null;
         }
 
+        /// <summary>
+        /// 立即隐藏 EventPanel，不触发关闭回调。
+        /// </summary>
         private void HideImmediate()
         {
-            canvasGroup.alpha = 0f;
-            canvasGroup.interactable = true;
-            canvasGroup.blocksRaycasts = false;
-            panelRoot.localScale = authoredScale;
-            idle.anchoredPosition = authoredIdlePosition;
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 0f;
+                canvasGroup.interactable = false;
+                canvasGroup.blocksRaycasts = false;
+            }
+
+            if (panelRoot != null)
+            {
+                panelRoot.localScale = authoredScale;
+            }
+
+            if (idle != null)
+            {
+                idle.anchoredPosition = authoredIdlePosition;
+            }
+
             isVisible = false;
+            isResolving = false;
         }
 
+        /// <summary>
+        /// 缓存 Inspector 或层级中可找到的 UI 引用。
+        /// </summary>
         private void CacheReferences()
         {
             if (panelRoot == null)
@@ -323,12 +423,32 @@ namespace Anchor.UI.Panel
             }
         }
 
+        /// <summary>
+        /// 记录编辑器里摆好的缩放和 idle 位置，供动画恢复使用。
+        /// </summary>
         private void CaptureAuthoredLayout()
         {
-            authoredScale = panelRoot.localScale;
-            authoredIdlePosition = idle.anchoredPosition;
+            authoredScale = panelRoot != null ? panelRoot.localScale : Vector3.one;
+            authoredIdlePosition = idle != null ? idle.anchoredPosition : Vector2.zero;
+            hasCapturedAuthoredLayout = true;
         }
 
+        /// <summary>
+        /// 确保 inactive 面板被外部直接打开时，动画基准布局已经初始化。
+        /// </summary>
+        private void EnsureAuthoredLayoutCaptured()
+        {
+            if (hasCapturedAuthoredLayout)
+            {
+                return;
+            }
+
+            CaptureAuthoredLayout();
+        }
+
+        /// <summary>
+        /// 注册周事件两个选项按钮的点击事件。
+        /// </summary>
         private void RegisterButtons()
         {
             CacheReferences();
@@ -337,6 +457,7 @@ namespace Anchor.UI.Panel
                 yesButton.onClick.RemoveListener(OnYesClicked);
                 yesButton.onClick.AddListener(OnYesClicked);
             }
+
             if (noButton != null)
             {
                 noButton.onClick.RemoveListener(OnNoClicked);
@@ -344,6 +465,9 @@ namespace Anchor.UI.Panel
             }
         }
 
+        /// <summary>
+        /// 注销周事件两个选项按钮的点击事件。
+        /// </summary>
         private void UnregisterButtons()
         {
             if (yesButton != null)
@@ -352,6 +476,9 @@ namespace Anchor.UI.Panel
                 noButton.onClick.RemoveListener(OnNoClicked);
         }
 
+        /// <summary>
+        /// 控制选项按钮是否可交互，避免动画或结算中重复点击。
+        /// </summary>
         private void SetButtonsInteractable(bool value)
         {
             if (yesButton != null)
@@ -360,19 +487,44 @@ namespace Anchor.UI.Panel
                 noButton.interactable = value;
         }
 
+        /// <summary>
+        /// 播放一次性 UI 音效。
+        /// </summary>
         private void PlayOneShot(AudioClip clip, float volume)
         {
             if (audioSource != null && clip != null)
+            {
                 audioSource.PlayOneShot(clip, volume);
+            }
         }
 
+        /// <summary>
+        /// 停止当前 EventPanel 动画。
+        /// </summary>
         private void KillAnimation()
         {
             if (panelSequence == null)
+            {
                 return;
+            }
 
             panelSequence.Kill();
             panelSequence = null;
+        }
+
+        /// <summary>
+        /// Inspector 参数变更时限制动画参数为合法范围。
+        /// </summary>
+        private void OnValidate()
+        {
+            popupDuration = Mathf.Max(0.01f, popupDuration);
+            popupStartScale = Mathf.Clamp(popupStartScale, 0.1f, 1f);
+            idleSlideDuration = Mathf.Max(0.01f, idleSlideDuration);
+            idleSlideDistance = Mathf.Max(0f, idleSlideDistance);
+            closeDuration = Mathf.Max(0.01f, closeDuration);
+            charactersPerSecond = Mathf.Max(0f, charactersPerSecond);
+            typeSoundVolume = Mathf.Clamp01(typeSoundVolume);
+            openSoundVolume = Mathf.Clamp01(openSoundVolume);
         }
     }
 }

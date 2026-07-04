@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Anchor.GameFlow;
 using Anchor.GameFlow.Buffs;
@@ -50,6 +51,9 @@ namespace Anchor.UI.Panel
         // 标记 Buff 图标缓存是否已经构建过。
         private static bool buffSpriteCacheBuilt;
 
+        // 当前 BuffWindow 关闭后要交还给流程编排器执行的回调。
+        private Action onClosed;
+
         /// <summary>
         /// Panel 启用时注册关闭按钮点击事件。
         /// </summary>
@@ -71,10 +75,11 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 打开 BuffWindow，实际动画入口交给 WindowDropBounceAnimator.Open。
+        /// 打开 BuffWindow，刷新一次候选 Buff，并记录关闭后继续流程的回调。
         /// </summary>
-        public void Open()
+        public void Open(Action closedCallback = null)
         {
+            onClosed = closedCallback;
             EnsureBuffWindowAnimator();
 
             if (buffWindowAnimator == null)
@@ -93,19 +98,47 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 关闭 BuffWindow，实际动画入口交给 WindowDropBounceAnimator.Close。
+        /// 关闭 BuffWindow，并清理关闭回调。
         /// </summary>
         public void Close()
+        {
+            onClosed = null;
+            CloseWindow(null);
+        }
+
+        /// <summary>
+        /// 关闭 BuffWindow，并在关闭动画完成后通知流程编排器继续。
+        /// </summary>
+        private void CloseAndNotify()
+        {
+            CloseWindow(NotifyClosed);
+        }
+
+        /// <summary>
+        /// 关闭 BuffWindow 的统一入口，回调会在窗口真正隐藏后触发。
+        /// </summary>
+        private void CloseWindow(Action closedCallback)
         {
             EnsureBuffWindowAnimator();
 
             if (buffWindowAnimator == null)
             {
                 gameObject.SetActive(false);
+                closedCallback?.Invoke();
                 return;
             }
 
-            buffWindowAnimator.Close();
+            buffWindowAnimator.Close(closedCallback);
+        }
+
+        /// <summary>
+        /// 执行并清理 BuffWindow 关闭回调，防止重复推进流程。
+        /// </summary>
+        private void NotifyClosed()
+        {
+            Action closedCallback = onClosed;
+            onClosed = null;
+            closedCallback?.Invoke();
         }
 
         /// <summary>
@@ -252,11 +285,11 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 点击关闭按钮后交给流程 UI 编排器推进下一步。
+        /// 点击关闭按钮后关闭 BuffWindow，流程推进交给关闭回调处理。
         /// </summary>
         private void OnCloseButtonClicked()
         {
-            GameFlowPanelCoordinator.GetOrCreate().NextStep();
+            CloseAndNotify();
         }
 
         /// <summary>

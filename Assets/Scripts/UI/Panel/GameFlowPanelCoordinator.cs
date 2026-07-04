@@ -8,7 +8,7 @@ namespace Anchor.UI.Panel
     public sealed class GameFlowPanelCoordinator : MonoBehaviour
     {
         /// <summary>
-        /// 当前场景唯一的流程 UI 编排入口，按钮层只调用这里。
+        /// 当前场景唯一的流程 UI 编排入口，负责决定各流程面板的显示顺序。
         /// </summary>
         public static GameFlowPanelCoordinator Instance { get; private set; }
 
@@ -79,6 +79,8 @@ namespace Anchor.UI.Panel
             }
 
             StopFlowRoutine();
+            CloseBuffWindow();
+            CloseEventPanel();
             CloseMainPanel();
             CloseWeekPanel();
             CloseGameEndPanel();
@@ -88,7 +90,7 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 推进当前流程一步，由这里统一判断该调用哪个流程入口和打开哪个 UI。
+        /// 兼容外部手动推进入口；正式 UI 流程由各面板关闭回调推进。
         /// </summary>
         public void NextStep()
         {
@@ -111,17 +113,13 @@ namespace Anchor.UI.Panel
             switch (runner.Controller.CurrentState)
             {
                 case GameFlowState.BudgetShop:
-                    runner.ConfirmBudgetShop();
-                    CloseBuffWindow();
-                    RouteCurrentState(runner);
+                    OnBuffWindowClosed();
                     break;
                 case GameFlowState.WeekEvent:
-                    EventPanelManager.Instance?.TryShowCurrentEvent();
+                    OpenEventPanel();
                     break;
                 case GameFlowState.WeekAction:
-                    runner.FinishWeekAction();
-                    CloseMainPanel();
-                    StartFlowRoutine(RouteFlowAfterCurrentState(runner));
+                    OnMainPanelClosed();
                     break;
                 case GameFlowState.WeekResolve:
                 case GameFlowState.MonthSettlement:
@@ -167,7 +165,7 @@ namespace Anchor.UI.Panel
                     OpenBuffWindow();
                     break;
                 case GameFlowState.WeekEvent:
-                    EventPanelManager.Instance?.TryShowCurrentEvent();
+                    OpenEventPanel();
                     break;
                 case GameFlowState.WeekAction:
                     OpenMainPanel();
@@ -183,7 +181,7 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 处理需要异步等待的流程状态：周结算等待按钮关闭，月结算等待弹幕播放。
+        /// 处理需要异步等待的流程状态：周结算交给关闭回调，月结算等待弹幕播放。
         /// </summary>
         private IEnumerator RouteFlowAfterCurrentState(GameFlowRunner runner)
         {
@@ -192,12 +190,11 @@ namespace Anchor.UI.Panel
                 switch (runner.Controller.CurrentState)
                 {
                     case GameFlowState.WeekEvent:
-                        EventPanelManager.Instance?.TryShowCurrentEvent();
+                        OpenEventPanel();
                         yield break;
                     case GameFlowState.WeekResolve:
-                        yield return OpenWeekPanelAndWaitForClose();
-                        runner.ContinueFlow();
-                        break;
+                        OpenWeekPanel();
+                        yield break;
                     case GameFlowState.WeekAction:
                         OpenMainPanel();
                         yield break;
@@ -228,14 +225,78 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 周事件面板完成关闭动画后继续路由当前流程状态。
+        /// 兼容旧调用：周事件面板关闭后继续路由当前流程状态。
         /// </summary>
         public void ResumeAfterWeekGameEventChoice()
         {
+            OnEventPanelClosed();
+        }
+
+        /// <summary>
+        /// BuffWindow 关闭后确认月初商店，并继续路由到周流程。
+        /// </summary>
+        private void OnBuffWindowClosed()
+        {
             if (!TryGetRunner(out GameFlowRunner runner) || runner.Controller == null)
+            {
                 return;
+            }
+
+            if (runner.Controller.CurrentState == GameFlowState.BudgetShop)
+            {
+                runner.ConfirmBudgetShop();
+            }
 
             RouteCurrentState(runner);
+        }
+
+        /// <summary>
+        /// EventPanel 关闭后继续路由；有下一个周事件就继续显示，否则进入 MainPanel。
+        /// </summary>
+        private void OnEventPanelClosed()
+        {
+            if (!TryGetRunner(out GameFlowRunner runner) || runner.Controller == null)
+            {
+                return;
+            }
+
+            RouteCurrentState(runner);
+        }
+
+        /// <summary>
+        /// MainPanel 关闭后结束本周行动，并进入周结算流程。
+        /// </summary>
+        private void OnMainPanelClosed()
+        {
+            if (!TryGetRunner(out GameFlowRunner runner) || runner.Controller == null)
+            {
+                return;
+            }
+
+            if (runner.Controller.CurrentState == GameFlowState.WeekAction)
+            {
+                runner.FinishWeekAction();
+            }
+
+            StartFlowRoutine(RouteFlowAfterCurrentState(runner));
+        }
+
+        /// <summary>
+        /// WeekPanel 关闭后继续流程，可能进入下周、月结算或结局。
+        /// </summary>
+        private void OnWeekPanelClosed()
+        {
+            if (!TryGetRunner(out GameFlowRunner runner) || runner.Controller == null)
+            {
+                return;
+            }
+
+            if (runner.Controller.CurrentState == GameFlowState.WeekResolve)
+            {
+                runner.ContinueFlow();
+            }
+
+            StartFlowRoutine(RouteFlowAfterCurrentState(runner));
         }
 
         /// <summary>
@@ -262,27 +323,6 @@ namespace Anchor.UI.Panel
 
             StopBulletScreen();
             isAdvancingFlow = false;
-        }
-
-        /// <summary>
-        /// 打开周结算面板，并等待玩家关闭。
-        /// </summary>
-        private IEnumerator OpenWeekPanelAndWaitForClose()
-        {
-            WeekPanelManager weekPanelManager = WeekPanelManager.Instance;
-
-            if (weekPanelManager == null)
-            {
-                Debug.LogWarning($"{nameof(GameFlowPanelCoordinator)} cannot find {nameof(WeekPanelManager)} in the scene.", this);
-                yield break;
-            }
-
-            weekPanelManager.Open();
-
-            while (weekPanelManager != null && weekPanelManager.gameObject.activeSelf)
-            {
-                yield return null;
-            }
         }
 
         /// <summary>
@@ -363,7 +403,7 @@ namespace Anchor.UI.Panel
                 return;
             }
 
-            windowShopPanelManager.Open();
+            windowShopPanelManager.Open(OnBuffWindowClosed);
         }
 
         /// <summary>
@@ -380,6 +420,35 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
+        /// 打开周事件面板，由面板关闭回调继续路由流程。
+        /// </summary>
+        private void OpenEventPanel()
+        {
+            EventPanelManager eventPanelManager = EventPanelManager.Instance;
+
+            if (eventPanelManager == null)
+            {
+                Debug.LogWarning($"{nameof(GameFlowPanelCoordinator)} cannot find {nameof(EventPanelManager)} in the scene.", this);
+                return;
+            }
+
+            eventPanelManager.TryShowCurrentEvent(OnEventPanelClosed);
+        }
+
+        /// <summary>
+        /// 关闭周事件面板。
+        /// </summary>
+        private void CloseEventPanel()
+        {
+            EventPanelManager eventPanelManager = EventPanelManager.Instance;
+
+            if (eventPanelManager != null)
+            {
+                eventPanelManager.Close();
+            }
+        }
+
+        /// <summary>
         /// 打开主操作页面。
         /// </summary>
         private void OpenMainPanel()
@@ -392,7 +461,7 @@ namespace Anchor.UI.Panel
                 return;
             }
 
-            mainPanelManager.Open();
+            mainPanelManager.Open(OnMainPanelClosed);
         }
 
         /// <summary>
@@ -419,6 +488,23 @@ namespace Anchor.UI.Panel
             {
                 weekPanelManager.Close();
             }
+        }
+
+        /// <summary>
+        /// 打开周结算页面，由关闭回调继续推进流程。
+        /// </summary>
+        private void OpenWeekPanel()
+        {
+            WeekPanelManager weekPanelManager = WeekPanelManager.Instance;
+
+            if (weekPanelManager == null)
+            {
+                Debug.LogWarning($"{nameof(GameFlowPanelCoordinator)} cannot find {nameof(WeekPanelManager)} in the scene.", this);
+                OnWeekPanelClosed();
+                return;
+            }
+
+            weekPanelManager.Open(OnWeekPanelClosed);
         }
 
         /// <summary>
