@@ -1,7 +1,10 @@
+using Anchor.Character.Attributes;
 using Anchor.GameFlow;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using YokiFrame;
 
 /// <summary>
 /// 持有并转发单个交互点下 Floating UI 的基础行为。
@@ -10,6 +13,7 @@ using UnityEngine.UI;
 public sealed class FloatingUIManager : MonoBehaviour
 {
     private const int ManagedButtonCount = 3;
+    private const string ActionPointGainTextName = "APGain";
 
     /// <summary>
     /// Floating UI 前两个选项要消耗的外部行动点类型。
@@ -51,6 +55,9 @@ public sealed class FloatingUIManager : MonoBehaviour
     // 缓存三个子按钮的点击回调，保证注册和解绑使用同一个委托实例。
     private readonly UnityAction[] childButtonCallbacks = new UnityAction[ManagedButtonCount];
 
+    // 缓存当前 Floating UI 子级中名为 APGain 的三个行动点文本。
+    private readonly TextMeshProUGUI[] actionPointGainTexts = new TextMeshProUGUI[ManagedButtonCount];
+
     public FloatingUIFan Fan => floatingUIFan;
     public FloatingUIActionPoints ActionPoints => actionPoints;
     public ButtonPrefabSpawner Spawner => buttonPrefabSpawner;
@@ -62,6 +69,7 @@ public sealed class FloatingUIManager : MonoBehaviour
     {
         CacheFloatingUIReferences();
         CacheChildButtons();
+        CacheActionPointGainTexts();
         CacheButtonPrefabSpawner();
     }
 
@@ -72,6 +80,7 @@ public sealed class FloatingUIManager : MonoBehaviour
     {
         CacheMissingFloatingUIReferences();
         CacheChildButtons();
+        CacheMissingActionPointGainTexts();
         CacheMissingButtonPrefabSpawner();
         EnsureChildButtonCallbacks();
     }
@@ -79,18 +88,23 @@ public sealed class FloatingUIManager : MonoBehaviour
     /// <summary>
     /// 组件启用时注册前两个子按钮的音效行动点消耗事件。
     /// 过期：现在注册的是当前 Type 配置的行动点消耗事件。
+    /// 新注释：同时监听玩家行动点变化，并刷新三个 APGain 文本。
     /// </summary>
     private void OnEnable()
     {
         RegisterChildButtonClicks();
+        RegisterActionPointChangedEvent();
+        RefreshActionPointGainTexts();
     }
 
     /// <summary>
     /// 组件禁用时移除子按钮事件，避免重复注册。
+    /// 新注释：同时注销玩家行动点变化事件，避免 inactive UI 继续接收回调。
     /// </summary>
     private void OnDisable()
     {
         UnregisterChildButtonClicks();
+        UnregisterActionPointChangedEvent();
     }
 
     /// <summary>
@@ -100,6 +114,7 @@ public sealed class FloatingUIManager : MonoBehaviour
     {
         CacheMissingFloatingUIReferences();
         CacheChildButtons();
+        CacheMissingActionPointGainTexts();
     }
 
     /// <summary>
@@ -111,6 +126,7 @@ public sealed class FloatingUIManager : MonoBehaviour
         floatingUIFan = GetComponentInChildren<FloatingUIFan>(true);
         actionPoints = GetComponentInChildren<FloatingUIActionPoints>(true);
         CacheChildButtons();
+        CacheActionPointGainTexts();
         CacheButtonPrefabSpawner();
     }
 
@@ -273,6 +289,137 @@ public sealed class FloatingUIManager : MonoBehaviour
             2 => runner.TrySpendAudioTwoActionPoints(),
             _ => runner.TryAllocateAudio(amount)
         };
+    }
+
+    /// <summary>
+    /// 缓存当前物体子级中名为 APGain 的三个 TextMeshProUGUI 文本。
+    /// </summary>
+    private void CacheActionPointGainTexts()
+    {
+        for (int i = 0; i < actionPointGainTexts.Length; i++)
+        {
+            actionPointGainTexts[i] = null;
+        }
+
+        TextMeshProUGUI[] texts = GetComponentsInChildren<TextMeshProUGUI>(true);
+        int cachedCount = 0;
+
+        for (int i = 0; i < texts.Length && cachedCount < actionPointGainTexts.Length; i++)
+        {
+            if (texts[i] == null || texts[i].name != ActionPointGainTextName)
+            {
+                continue;
+            }
+
+            actionPointGainTexts[cachedCount] = texts[i];
+            cachedCount++;
+        }
+    }
+
+    /// <summary>
+    /// APGain 文本引用为空时重新查找，兼容运行时动态启用的层级。
+    /// </summary>
+    private void CacheMissingActionPointGainTexts()
+    {
+        for (int i = 0; i < actionPointGainTexts.Length; i++)
+        {
+            if (actionPointGainTexts[i] == null)
+            {
+                CacheActionPointGainTexts();
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 注册玩家行动点变化事件，用于消费行动点后同步刷新 APGain 文本。
+    /// </summary>
+    private void RegisterActionPointChangedEvent()
+    {
+        EventKit.Type.UnRegister<CharacterAttributeChangedEvent>(OnCharacterAttributeChanged);
+        EventKit.Type.Register<CharacterAttributeChangedEvent>(OnCharacterAttributeChanged);
+    }
+
+    /// <summary>
+    /// 注销玩家行动点变化事件。
+    /// </summary>
+    private void UnregisterActionPointChangedEvent()
+    {
+        EventKit.Type.UnRegister<CharacterAttributeChangedEvent>(OnCharacterAttributeChanged);
+    }
+
+    /// <summary>
+    /// 玩家当前周行动点变化时，同步刷新三个 APGain 文本。
+    /// </summary>
+    private void OnCharacterAttributeChanged(CharacterAttributeChangedEvent attributeEvent)
+    {
+        if (attributeEvent.AttributeId != CharacterAttributeIds.WeeklyActionPower)
+        {
+            return;
+        }
+
+        if (!IsCurrentPlayerAttributeSet(attributeEvent.AttributeSet))
+        {
+            return;
+        }
+
+        RefreshActionPointGainTexts(attributeEvent.CurrentValue);
+    }
+
+    /// <summary>
+    /// 用当前流程黑板里的剩余行动点刷新三个 APGain 文本。
+    /// </summary>
+    private void RefreshActionPointGainTexts()
+    {
+        if (TryGetCurrentRemainingActionPoints(out int remainingActionPoints))
+        {
+            RefreshActionPointGainTexts(remainingActionPoints);
+        }
+    }
+
+    /// <summary>
+    /// 用指定剩余行动点数刷新三个 APGain 文本。
+    /// </summary>
+    private void RefreshActionPointGainTexts(int remainingActionPoints)
+    {
+        CacheMissingActionPointGainTexts();
+
+        string actionPointText = Mathf.Max(0, remainingActionPoints).ToString();
+        for (int i = 0; i < actionPointGainTexts.Length; i++)
+        {
+            if (actionPointGainTexts[i] != null)
+            {
+                actionPointGainTexts[i].text = actionPointText;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 获取当前流程中的剩余行动点。
+    /// </summary>
+    private static bool TryGetCurrentRemainingActionPoints(out int remainingActionPoints)
+    {
+        remainingActionPoints = 0;
+
+        GameFlowRunner runner = GameFlowRunner.Instance;
+        if (runner == null || runner.Controller == null)
+        {
+            return false;
+        }
+
+        remainingActionPoints = runner.Controller.Blackboard.RemainingActionPoints;
+        return true;
+    }
+
+    /// <summary>
+    /// 判断属性变化是否来自当前流程玩家属性集合。
+    /// </summary>
+    private static bool IsCurrentPlayerAttributeSet(CharacterAttributeSet attributeSet)
+    {
+        GameFlowRunner runner = GameFlowRunner.Instance;
+        return runner != null
+            && runner.Controller != null
+            && attributeSet == runner.Controller.Blackboard.PlayerAttributes;
     }
 
     /// <summary>
