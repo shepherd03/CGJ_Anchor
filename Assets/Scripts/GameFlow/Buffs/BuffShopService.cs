@@ -206,11 +206,16 @@ namespace Anchor.GameFlow.Buffs
 
         private bool CanPurchase(GameFlowBlackboard blackboard, BuffRow buff)
         {
+            return CanOffer(blackboard, buff)
+                && blackboard.HasBudgetShopPurchaseCount();
+        }
+
+        private bool CanOffer(GameFlowBlackboard blackboard, BuffRow buff)
+        {
             return buff != null
                 && buff.Id > 0
                 && buff.Weight > 0
                 && !blackboard.HasActiveBuff(buff.Id)
-                && blackboard.HasBudgetShopPurchaseCount()
                 && CanPay(blackboard, buff)
                 && TryValidateEffects(blackboard, buff, out _);
         }
@@ -222,7 +227,7 @@ namespace Anchor.GameFlow.Buffs
 
         private bool IsDrawable(WeightedExtractionEntry<BuffRow, GameFlowBlackboard> entry, GameFlowBlackboard blackboard)
         {
-            return CanPurchase(blackboard, entry.Item);
+            return CanOffer(blackboard, entry.Item);
         }
 
         private BuffRow FindCurrentOffer(int buffId)
