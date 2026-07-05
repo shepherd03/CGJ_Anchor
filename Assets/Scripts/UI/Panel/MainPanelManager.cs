@@ -159,10 +159,11 @@ namespace Anchor.UI.Panel
                 return;
             }
 
+            GameFlowCoreStatsSnapshot coreStats = GameFlowCoreStatsSnapshot.From(blackboard);
             SetStatusText(goldText, "Gold:", blackboard.Coins, lastGoldValue);
-            SetStatusText(bugText, "Bug:", blackboard.BugScore, lastBugValue);
-            SetStatusText(viewText, "View:", blackboard.VisualScore, lastViewValue);
-            SetStatusText(audioText, "Audio:", blackboard.AtmosphereScore, lastAudioValue);
+            SetStatusText(bugText, "Bug:", coreStats.BugScore, lastBugValue);
+            SetStatusText(viewText, "View:", coreStats.VisualScore, lastViewValue);
+            SetStatusText(audioText, "Audio:", coreStats.AtmosphereScore, lastAudioValue);
             SetActionPointContainer(blackboard.RemainingActionPoints);
             SetStatusText(wishlistText, "", blackboard.WishlistCount, lastWishlistValue);
             SetStatusText(qualityText, "Quality:", blackboard.QualityScore, lastQualityValue);

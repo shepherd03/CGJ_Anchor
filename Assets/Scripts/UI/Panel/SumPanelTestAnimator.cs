@@ -103,11 +103,12 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
     {
         if (syncWithGameFlowDataOnPlay && TryGetCurrentBlackboard(out GameFlowBlackboard blackboard))
         {
+            GameFlowCoreStatsSnapshot coreStats = GameFlowCoreStatsSnapshot.From(blackboard);
             WeekResolveResult weekResult = blackboard.LastWeekResult;
             Play(
-                blackboard.BugScore,
-                blackboard.VisualScore,
-                blackboard.AtmosphereScore,
+                coreStats.BugScore,
+                coreStats.VisualScore,
+                coreStats.AtmosphereScore,
                 weekResult.WishlistStartValue,
                 weekResult.WishlistModifiersOrEmpty);
             return;
@@ -221,7 +222,12 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
 
         group1Elements = GetDirectRectChildren(group1);
         group3Elements = GetDirectRectChildren(group3);
-        group4Numbers = GetDirectTextChildren(group4);
+        group4Numbers = new[]
+        {
+            group4.Find("BugValue")?.GetComponent<TMP_Text>(),
+            group4.Find("ArtValue")?.GetComponent<TMP_Text>(),
+            group4.Find("AudioValue")?.GetComponent<TMP_Text>()
+        };
         group5Number = group5.childCount > 0 ? group5.GetChild(0).GetComponent<TMP_Text>() : null;
         bonusNameText = group6.Find("BonusName")?.GetComponent<TMP_Text>();
         bonusValueText = group6.Find("Bonus")?.GetComponent<TMP_Text>();
@@ -232,10 +238,10 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
         }
 
         if (group1Elements.Length != 5 || group3Elements.Length != 3 ||
-            group4Numbers.Length != 3 || group5Number == null ||
+            Array.Exists(group4Numbers, number => number == null) || group5Number == null ||
             bonusNameText == null || bonusValueText == null)
         {
-            Debug.LogError("SumPanelTestAnimator: Expected Group1=5 children, Group3=3 children, Group4=3 TMP texts, Group5=1 TMP text, and Group6 BonusName/Bonus TMP texts.", this);
+            Debug.LogError("SumPanelTestAnimator: Expected Group1=5 children, Group3=3 children, Group4 BugValue/ArtValue/AudioValue, one Group5 TMP text, and Group6 BonusName/Bonus TMP texts.", this);
             return false;
         }
 
@@ -468,17 +474,6 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
         }
 
         return children;
-    }
-
-    private static TMP_Text[] GetDirectTextChildren(RectTransform parent)
-    {
-        var texts = new TMP_Text[parent.childCount];
-        for (int i = 0; i < parent.childCount; i++)
-        {
-            texts[i] = parent.GetChild(i).GetComponent<TMP_Text>();
-        }
-
-        return texts;
     }
 
     private static Vector2[] CapturePositions(RectTransform[] targets)

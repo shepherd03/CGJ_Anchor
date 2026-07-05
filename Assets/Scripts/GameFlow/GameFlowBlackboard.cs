@@ -19,6 +19,10 @@ namespace Anchor.GameFlow
         private float mCurrentWeekWishlistMultiplier = 1f;
         private int mWeekStartWishlistCount;
         private int mWeeklyWishlistModifierSequence;
+        private int mPendingWeekBugDelta;
+        private int mPendingWeekVisualDelta;
+        private int mPendingWeekAtmosphereDelta;
+        private bool mHasPendingWeekCoreStats;
 
         public int MonthIndex { get; private set; }
         public int WeekIndex { get; private set; }
@@ -118,6 +122,7 @@ namespace Anchor.GameFlow
             mWeeklyWishlistModifierSequence = 0;
             mWeekStartWishlistCount = WishlistCount;
             LastWeekWishlistDelta = 0;
+            ClearPendingWeekCoreStats();
         }
 
         public void BeginMonth(MonthDefinition definition)
@@ -130,6 +135,7 @@ namespace Anchor.GameFlow
 
         public void BeginWeek()
         {
+            ApplyPendingWeekCoreStats();
             WeekIndex++;
             TotalWeekIndex++;
             mWeekStartWishlistCount = WishlistCount;
@@ -255,9 +261,7 @@ namespace Anchor.GameFlow
         public void ApplyWeekResult(WeekResolveResult result)
         {
             LastWeekResult = result;
-            PlayerAttributes.Add(CharacterAttributeIds.Visual, result.VisualDelta);
-            PlayerAttributes.Add(CharacterAttributeIds.Atmosphere, result.AtmosphereDelta);
-            PlayerAttributes.Set(CharacterAttributeIds.Bug, Math.Max(0, BugScore + result.BugDelta));
+            SetPendingWeekCoreStats(result);
             PlayerAttributes.Add(CharacterAttributeIds.Coins, result.CoinDelta);
             PlayerAttributes.Set(CharacterAttributeIds.Wishlist, Math.Max(0, WishlistCount + result.WishlistDelta));
             LastWeekWishlistDelta = WishlistCount - mWeekStartWishlistCount;
@@ -270,6 +274,40 @@ namespace Anchor.GameFlow
             RecordResolvedWeekSpentTracks();
             ClearWeeklyActionDeltas();
             ClearWeeklyWishlistModifiers();
+        }
+
+        /// <summary>
+        /// 周结算面板保持显示关闭 HUD 时的核心数值；本周固定变化延迟到下一周开始时写入。
+        /// </summary>
+        private void SetPendingWeekCoreStats(WeekResolveResult result)
+        {
+            mPendingWeekBugDelta = result.BugDelta;
+            mPendingWeekVisualDelta = result.VisualDelta;
+            mPendingWeekAtmosphereDelta = result.AtmosphereDelta;
+            mHasPendingWeekCoreStats = true;
+        }
+
+        private void ApplyPendingWeekCoreStats()
+        {
+            if (!mHasPendingWeekCoreStats)
+            {
+                return;
+            }
+
+            PlayerAttributes.Set(
+                CharacterAttributeIds.Bug,
+                Math.Max(0, BugScore + mPendingWeekBugDelta));
+            PlayerAttributes.Add(CharacterAttributeIds.Visual, mPendingWeekVisualDelta);
+            PlayerAttributes.Add(CharacterAttributeIds.Atmosphere, mPendingWeekAtmosphereDelta);
+            ClearPendingWeekCoreStats();
+        }
+
+        private void ClearPendingWeekCoreStats()
+        {
+            mPendingWeekBugDelta = 0;
+            mPendingWeekVisualDelta = 0;
+            mPendingWeekAtmosphereDelta = 0;
+            mHasPendingWeekCoreStats = false;
         }
 
         public void ApplyMonthSettlement(MonthSettlementResult result)

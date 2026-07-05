@@ -117,10 +117,11 @@ namespace Anchor.UI.Panel
         {
             if (TryGetCurrentBlackboard(out GameFlowBlackboard blackboard))
             {
+                GameFlowCoreStatsSnapshot coreStats = GameFlowCoreStatsSnapshot.From(blackboard);
                 Play(
-                    blackboard.BugScore,
-                    blackboard.VisualScore,
-                    blackboard.AtmosphereScore,
+                    coreStats.BugScore,
+                    coreStats.VisualScore,
+                    coreStats.AtmosphereScore,
                     blackboard.WishlistCount,
                     blackboard.EndingResult.EndingId);
                 return;
