@@ -3,6 +3,7 @@ using Anchor.Audio;
 using Anchor.GameFlow;
 using Anchor.UI.Transitions;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Anchor.UI.Panel
 {
@@ -21,10 +22,19 @@ namespace Anchor.UI.Panel
         [SerializeField, Min(0f), Tooltip("月结算弹幕播放时长。")]
         private float bulletScreenDuration = 4f;
 
+        [Header("Month Settlement Poster")]
+        [SerializeField, Min(0f), Tooltip("月结算弹幕结束后，阶段宣传图淡入完成后的停留时长。")]
+        private float monthSettlementPosterDuration = 4f;
+
+        [SerializeField, Min(0f), Tooltip("阶段宣传图淡入和淡出各自持续的时长。")]
+        private float monthSettlementPosterFadeDuration = 0.5f;
+
         // 当前正在执行的流程 UI 协程。
         private Coroutine flowRoutine;
         // 防止按钮连点造成重复推进。
         private bool isAdvancingFlow;
+        // 运行时生成的月结算阶段宣传图覆盖层。
+        private GameObject monthSettlementPosterInstance;
 
         /// <summary>
         /// 获取当前场景的流程 UI 编排器；场景没放时运行时创建一个兜底对象。
@@ -247,6 +257,7 @@ namespace Anchor.UI.Panel
                         yield break;
                     case GameFlowState.MonthSettlement:
                         yield return PlayBulletScreenForDuration();
+                        yield return PlayMonthSettlementPosterForDuration(runner);
                         runner.ContinueFlow();
                         break;
                     case GameFlowState.BudgetShop:
@@ -369,6 +380,7 @@ namespace Anchor.UI.Panel
             }
 
             StopBulletScreen();
+            HideMonthSettlementPoster();
             isAdvancingFlow = false;
         }
 
@@ -384,6 +396,183 @@ namespace Anchor.UI.Panel
 
             yield return new WaitForSecondsRealtime(bulletScreenDuration);
             StopBulletScreen();
+        }
+
+        /// <summary>
+        /// 按月结算类型显示对应 Resources 宣传图，显示结束后销毁。
+        /// </summary>
+        private IEnumerator PlayMonthSettlementPosterForDuration(GameFlowRunner runner)
+        {
+            MonthSettlementType settlementType = runner != null && runner.Controller != null
+                ? runner.Controller.Blackboard.LastMonthResult.SettlementType
+                : MonthSettlementType.PublicRelease;
+
+            string resourcePath = GetMonthSettlementPosterResourcePath(settlementType);
+
+            if (string.IsNullOrEmpty(resourcePath))
+            {
+                yield break;
+            }
+
+            if (!ShowMonthSettlementPoster(resourcePath, out CanvasGroup posterCanvasGroup))
+            {
+                yield break;
+            }
+
+            yield return FadeCanvasGroup(posterCanvasGroup, 0f, 1f, monthSettlementPosterFadeDuration);
+
+            if (monthSettlementPosterDuration > 0f)
+            {
+                yield return new WaitForSecondsRealtime(monthSettlementPosterDuration);
+            }
+
+            yield return FadeCanvasGroup(posterCanvasGroup, 1f, 0f, monthSettlementPosterFadeDuration);
+            HideMonthSettlementPoster();
+        }
+
+        /// <summary>
+        /// 获取月结算类型对应的 Resources 图片路径；不写扩展名，兼容 png/jpg。
+        /// </summary>
+        private static string GetMonthSettlementPosterResourcePath(MonthSettlementType settlementType)
+        {
+            switch (settlementType)
+            {
+                case MonthSettlementType.PvRelease:
+                    return "PV";
+                case MonthSettlementType.ClosedBeta:
+                    return "内测";
+                case MonthSettlementType.PublicRelease:
+                    return "公测";
+                case MonthSettlementType.FinalRelease:
+                    // 当前默认三个月流程的最后一月是 FinalRelease，但资源只提供了公测图。
+                    return "公测";
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>
+        /// 创建顶层全屏 Canvas 并显示指定 Resources 图片。
+        /// </summary>
+        private bool ShowMonthSettlementPoster(string resourcePath, out CanvasGroup canvasGroup)
+        {
+            canvasGroup = null;
+            HideMonthSettlementPoster();
+
+            Sprite posterSprite = Resources.Load<Sprite>(resourcePath);
+            Texture2D posterTexture = posterSprite == null ? Resources.Load<Texture2D>(resourcePath) : null;
+
+            if (posterSprite == null && posterTexture == null)
+            {
+                Debug.LogWarning($"{nameof(GameFlowPanelCoordinator)} cannot load Resources/{resourcePath}.", this);
+                return false;
+            }
+
+            monthSettlementPosterInstance = new GameObject(
+                "MonthSettlementPosterCanvas",
+                typeof(RectTransform),
+                typeof(Canvas),
+                typeof(CanvasScaler),
+                typeof(GraphicRaycaster),
+                typeof(CanvasGroup));
+
+            Canvas canvas = monthSettlementPosterInstance.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = 32767;
+
+            CanvasScaler scaler = monthSettlementPosterInstance.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+
+            canvasGroup = monthSettlementPosterInstance.GetComponent<CanvasGroup>();
+            canvasGroup.alpha = 0f;
+            canvasGroup.interactable = true;
+            canvasGroup.blocksRaycasts = true;
+
+            if (posterSprite != null)
+            {
+                var imageObject = new GameObject("Poster", typeof(RectTransform), typeof(Image));
+                imageObject.transform.SetParent(monthSettlementPosterInstance.transform, false);
+                StretchToFullScreen(imageObject.transform as RectTransform);
+
+                Image image = imageObject.GetComponent<Image>();
+                image.sprite = posterSprite;
+                image.preserveAspect = false;
+                image.raycastTarget = true;
+                return true;
+            }
+
+            var rawImageObject = new GameObject("Poster", typeof(RectTransform), typeof(RawImage));
+            rawImageObject.transform.SetParent(monthSettlementPosterInstance.transform, false);
+            StretchToFullScreen(rawImageObject.transform as RectTransform);
+
+            RawImage rawImage = rawImageObject.GetComponent<RawImage>();
+            rawImage.texture = posterTexture;
+            rawImage.raycastTarget = true;
+            return true;
+        }
+
+        /// <summary>
+        /// 用未缩放时间淡入或淡出指定 CanvasGroup。
+        /// </summary>
+        private static IEnumerator FadeCanvasGroup(CanvasGroup canvasGroup, float startAlpha, float endAlpha, float duration)
+        {
+            if (canvasGroup == null)
+            {
+                yield break;
+            }
+
+            if (duration <= 0f)
+            {
+                canvasGroup.alpha = endAlpha;
+                yield break;
+            }
+
+            float elapsed = 0f;
+            canvasGroup.alpha = startAlpha;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                canvasGroup.alpha = Mathf.Lerp(startAlpha, endAlpha, Mathf.Clamp01(elapsed / duration));
+                yield return null;
+            }
+
+            canvasGroup.alpha = endAlpha;
+        }
+
+        /// <summary>
+        /// 销毁月结算阶段宣传图覆盖层。
+        /// </summary>
+        private void HideMonthSettlementPoster()
+        {
+            if (monthSettlementPosterInstance == null)
+            {
+                return;
+            }
+
+            Destroy(monthSettlementPosterInstance);
+            monthSettlementPosterInstance = null;
+        }
+
+        /// <summary>
+        /// 将 RectTransform 拉伸到父节点全屏。
+        /// </summary>
+        private static void StretchToFullScreen(RectTransform rectTransform)
+        {
+            if (rectTransform == null)
+            {
+                return;
+            }
+
+            rectTransform.anchorMin = Vector2.zero;
+            rectTransform.anchorMax = Vector2.one;
+            rectTransform.offsetMin = Vector2.zero;
+            rectTransform.offsetMax = Vector2.zero;
+            rectTransform.localScale = Vector3.one;
+            rectTransform.localRotation = Quaternion.identity;
         }
 
         /// <summary>
