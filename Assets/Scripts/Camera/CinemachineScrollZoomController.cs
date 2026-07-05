@@ -193,6 +193,9 @@ public class CinemachineScrollZoomController : MonoBehaviour
     [SerializeField, Tooltip("再次点击当前已激活镜头对应的按钮时，是否切回默认虚拟镜头。开启后当前按钮不会被禁用。")]
     private bool activeButtonReturnsToDefaultCamera = true;
 
+    [SerializeField, Tooltip("点击某个交互点后，直到再次点击该交互点切回默认镜头前，是否禁止其他交互点按钮。")]
+    private bool blockOtherButtonsWhileInteractionActive = true;
+
     private readonly List<Button> registeredButtons = new List<Button>();
     private readonly List<UnityAction> registeredActions = new List<UnityAction>();
     private readonly List<EventTrigger> registeredGlowEventTriggers = new List<EventTrigger>();
@@ -278,12 +281,15 @@ public class CinemachineScrollZoomController : MonoBehaviour
             return;
         }
 
-        bool isCurrentCameraButton = binding.VirtualCamera == currentVirtualCamera;
-        bool isLockedGlowButton = lockedGlowBinding == binding;
-        if (activeButtonReturnsToDefaultCamera && isCurrentCameraButton && isLockedGlowButton)
+        if (ShouldReturnLockedBindingToDefault(binding))
         {
             UnlockGlowBinding(binding);
             SwitchToDefaultCamera();
+            return;
+        }
+
+        if (ShouldBlockBindingSwitch(binding))
+        {
             return;
         }
 
@@ -304,6 +310,7 @@ public class CinemachineScrollZoomController : MonoBehaviour
             return;
         }
 
+        UnlockGlowBinding(lockedGlowBinding);
         SwitchToCamera(targetCamera);
     }
 
@@ -527,6 +534,7 @@ public class CinemachineScrollZoomController : MonoBehaviour
             return;
         }
 
+        bool hasLockedInteraction = blockOtherButtonsWhileInteractionActive && lockedGlowBinding != null;
         for (int i = 0; i < cameraButtonBindings.Length; i++)
         {
             CameraButtonBinding binding = cameraButtonBindings[i];
@@ -536,9 +544,38 @@ public class CinemachineScrollZoomController : MonoBehaviour
             }
 
             bool isActiveCameraButton = binding.VirtualCamera == currentVirtualCamera;
-            bool keepActiveButtonClickable = activeButtonReturnsToDefaultCamera && isActiveCameraButton;
-            binding.Button.interactable = binding.Enabled && (keepActiveButtonClickable || !disableActiveButton || !isActiveCameraButton);
+            bool isLockedInteractionButton = binding == lockedGlowBinding;
+            bool keepActiveButtonClickable = isLockedInteractionButton && isActiveCameraButton
+                && (activeButtonReturnsToDefaultCamera || blockOtherButtonsWhileInteractionActive);
+            bool blockedByLockedInteraction = hasLockedInteraction && !isLockedInteractionButton;
+
+            // 有交互点处于展开状态时，只允许当前交互点继续点击，用于二次点击关闭。
+            binding.Button.interactable = binding.Enabled
+                && !blockedByLockedInteraction
+                && (keepActiveButtonClickable || !disableActiveButton || !isActiveCameraButton);
         }
+    }
+
+    /// <summary>
+    /// 判断当前锁定的交互点是否应该通过二次点击回到默认镜头。
+    /// </summary>
+    private bool ShouldReturnLockedBindingToDefault(CameraButtonBinding binding)
+    {
+        bool isCurrentCameraButton = binding.VirtualCamera == currentVirtualCamera;
+        bool isLockedGlowButton = lockedGlowBinding == binding;
+        return isCurrentCameraButton
+            && isLockedGlowButton
+            && (activeButtonReturnsToDefaultCamera || blockOtherButtonsWhileInteractionActive);
+    }
+
+    /// <summary>
+    /// 判断请求切换的交互点是否应该被当前已展开交互点拦截。
+    /// </summary>
+    private bool ShouldBlockBindingSwitch(CameraButtonBinding binding)
+    {
+        return blockOtherButtonsWhileInteractionActive
+            && lockedGlowBinding != null
+            && lockedGlowBinding != binding;
     }
 
     /// <summary>
