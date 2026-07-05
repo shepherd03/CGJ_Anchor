@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using Anchor.Character.Attributes;
 using Anchor.GameFlow;
 using Anchor.GameFlow.Buffs;
 using Anchor.Window;
+using DG.Tweening;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using YokiFrame;
@@ -14,6 +17,8 @@ namespace Anchor.UI.Panel
     [DisallowMultipleComponent]
     public sealed class WindowShopPanelManager : PanelManagerSingleton<WindowShopPanelManager>
     {
+        private const string DollarObjectName = "Dollar";
+
         [Header("Buff Window")]
         [SerializeField, Tooltip("BuffWindow 上的下落回弹动画组件。为空时会从当前物体或子物体查找。")]
         private WindowDropBounceAnimator buffWindowAnimator;
@@ -27,6 +32,28 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("BuffWindow 的二级介绍弹窗控制器。为空时会从当前物体或子物体查找。")]
         private IntroductionWindowController introductionWindow;
 
+        [Header("Dollar")]
+        [SerializeField, Tooltip("显示玩家当前金币数量的 Dollar 文本。为空时会自动查找名为 Dollar 的 UI 节点。")]
+        private TextMeshProUGUI dollarText;
+
+        [SerializeField, Min(0.01f), Tooltip("金币变化时膨胀或缩小的动画时长。")]
+        private float dollarChangeScaleDuration = 0.12f;
+
+        [SerializeField, Min(0.01f), Tooltip("金币变化后恢复原尺寸和颜色的动画时长。")]
+        private float dollarChangeRestoreDuration = 0.18f;
+
+        [SerializeField, Min(1f), Tooltip("金币上升时 Dollar 文本膨胀到的倍率。")]
+        private float dollarIncreaseScale = 1.18f;
+
+        [SerializeField, Range(0.01f, 1f), Tooltip("金币下降时 Dollar 文本缩小到的倍率。")]
+        private float dollarDecreaseScale = 0.88f;
+
+        [SerializeField, Tooltip("金币上升时 Dollar 文本短暂显示的颜色。")]
+        private Color dollarIncreaseColor = Color.green;
+
+        [SerializeField, Tooltip("金币下降时 Dollar 文本短暂显示的颜色。")]
+        private Color dollarDecreaseColor = Color.red;
+
         [Header("Button")]
         [SerializeField, Tooltip("点击后关闭当前 BuffWindow 的按钮。")]
         private Button closeButton;
@@ -36,6 +63,17 @@ namespace Anchor.UI.Panel
 
         // 当前由面板动态生成的 BuffCard，用于重新注入数据时清理旧实例。
         private readonly List<BuffCardController> generatedBuffCards = new List<BuffCardController>();
+        // 是否已经记录过上一帧金币值；首次刷新只同步文本，不播放涨跌动画。
+        private bool hasDollarSnapshot;
+        // 上一次同步到 Dollar 文本的玩家金币值。
+        private int lastDollarValue;
+        // Dollar 文本原始颜色和尺寸，动画结束时恢复。
+        private Color dollarOriginalColor;
+        private Vector3 dollarOriginalScale = Vector3.one;
+        // 是否已经缓存过 Dollar 文本原始样式。
+        private bool hasDollarOriginalState;
+        // Dollar 文本正在展示涨跌动画时不被普通刷新覆盖。
+        private bool dollarShowingDelta;
 
         // Buff 图标所在的 Resources 多 Sprite 图片路径，路径不包含文件扩展名。
         private static readonly string[] BuffSpriteSheetResourcePaths =
@@ -60,18 +98,23 @@ namespace Anchor.UI.Panel
         private void OnEnable()
         {
             RegisterBudgetShopBuffOffersRefreshedEvent();
+            RegisterPlayerCoinChangedEvent();
             RegisterCloseButtonClick();
             RegisterRefreshButtonClick();
+            RefreshDollarText();
         }
 
         /// <summary>
         /// Panel 关闭时注销事件和按钮点击事件，避免重复绑定。
+        /// 新注释：同时停止 Dollar 金币动画，避免禁用后继续驱动共享文本。
         /// </summary>
         private void OnDisable()
         {
             UnregisterBudgetShopBuffOffersRefreshedEvent();
+            UnregisterPlayerCoinChangedEvent();
             UnregisterCloseButtonClick();
             UnregisterRefreshButtonClick();
+            StopDollarTextAnimation();
         }
 
         /// <summary>
@@ -93,6 +136,7 @@ namespace Anchor.UI.Panel
                 gameObject.SetActive(true);
             }
 
+            RefreshDollarText();
             RequestBudgetShopBuffOffersRefresh();
             buffWindowAnimator.Open();
         }
@@ -257,6 +301,216 @@ namespace Anchor.UI.Panel
             }
 
             InjectData(flowEvent.Offers);
+            RefreshDollarText();
+        }
+
+        /// <summary>
+        /// 注册玩家金币变化事件，用于商店打开时同步 Dollar 文本。
+        /// </summary>
+        private void RegisterPlayerCoinChangedEvent()
+        {
+            EventKit.Type.UnRegister<CharacterAttributeChangedEvent>(OnPlayerAttributeChanged);
+            EventKit.Type.Register<CharacterAttributeChangedEvent>(OnPlayerAttributeChanged);
+        }
+
+        /// <summary>
+        /// 注销玩家金币变化事件。
+        /// </summary>
+        private void UnregisterPlayerCoinChangedEvent()
+        {
+            EventKit.Type.UnRegister<CharacterAttributeChangedEvent>(OnPlayerAttributeChanged);
+        }
+
+        /// <summary>
+        /// 玩家金币变化来自当前流程黑板时，刷新 Dollar 文本并播放涨跌反馈。
+        /// </summary>
+        private void OnPlayerAttributeChanged(CharacterAttributeChangedEvent attributeEvent)
+        {
+            if (attributeEvent.AttributeId != CharacterAttributeIds.Coins)
+            {
+                return;
+            }
+
+            if (!TryGetCurrentBlackboard(out GameFlowBlackboard blackboard) ||
+                attributeEvent.AttributeSet != blackboard.PlayerAttributes)
+            {
+                return;
+            }
+
+            SetDollarText(blackboard.Coins, lastDollarValue);
+            CacheDollarSnapshot(blackboard.Coins);
+        }
+
+        /// <summary>
+        /// 用当前流程黑板里的玩家金币刷新 Dollar 文本。
+        /// </summary>
+        private void RefreshDollarText()
+        {
+            if (!TryGetCurrentBlackboard(out GameFlowBlackboard blackboard))
+            {
+                SetDollarTextUnavailable();
+                return;
+            }
+
+            SetDollarText(blackboard.Coins, lastDollarValue);
+            CacheDollarSnapshot(blackboard.Coins);
+        }
+
+        /// <summary>
+        /// 设置 Dollar 文本，并在已有旧值时按金币涨跌播放颜色和缩放反馈。
+        /// </summary>
+        private void SetDollarText(int currentValue, int previousValue)
+        {
+            EnsureDollarText();
+
+            if (!hasDollarSnapshot || dollarText == null || currentValue == previousValue)
+            {
+                if (dollarText != null && dollarShowingDelta)
+                {
+                    return;
+                }
+
+                SetDollarTextValue(currentValue);
+                return;
+            }
+
+            PlayDollarChangeAnimation(currentValue, currentValue - previousValue);
+        }
+
+        /// <summary>
+        /// 流程数据不可用时显示 Dollar 占位内容，并清理旧快照。
+        /// </summary>
+        private void SetDollarTextUnavailable()
+        {
+            hasDollarSnapshot = false;
+            StopDollarTextAnimation();
+            SetDollarTextValue("--");
+        }
+
+        /// <summary>
+        /// 缓存本次金币值，供下一次刷新判断涨跌。
+        /// </summary>
+        private void CacheDollarSnapshot(int coinValue)
+        {
+            lastDollarValue = coinValue;
+            hasDollarSnapshot = true;
+        }
+
+        /// <summary>
+        /// 金币上升时显示加数、膨胀并变绿；金币下降时显示减数、缩小并变红；随后恢复当前金币值。
+        /// </summary>
+        private void PlayDollarChangeAnimation(int currentValue, int deltaValue)
+        {
+            EnsureDollarText();
+            if (dollarText == null)
+            {
+                return;
+            }
+
+            CacheDollarOriginalState();
+
+            bool isIncrease = deltaValue > 0;
+            Transform textTransform = dollarText.transform;
+            Vector3 targetScale = dollarOriginalScale * (isIncrease ? dollarIncreaseScale : dollarDecreaseScale);
+            Color targetColor = isIncrease ? dollarIncreaseColor : dollarDecreaseColor;
+
+            dollarText.DOKill();
+            textTransform.DOKill();
+            dollarShowingDelta = true;
+            dollarText.text = FormatDeltaText(deltaValue);
+            dollarText.color = targetColor;
+            textTransform.localScale = dollarOriginalScale;
+
+            Sequence sequence = DOTween.Sequence()
+                .SetTarget(dollarText)
+                .SetUpdate(true);
+            sequence.Join(textTransform.DOScale(targetScale, dollarChangeScaleDuration).SetEase(Ease.OutQuad));
+            sequence.Append(textTransform.DOScale(dollarOriginalScale, dollarChangeRestoreDuration).SetEase(Ease.OutQuad));
+            sequence.Join(dollarText.DOColor(dollarOriginalColor, dollarChangeRestoreDuration).SetEase(Ease.OutQuad));
+            sequence.OnComplete(() =>
+            {
+                dollarShowingDelta = false;
+                SetDollarTextValue(currentValue);
+            });
+            sequence.OnKill(() => dollarShowingDelta = false);
+        }
+
+        /// <summary>
+        /// 停止 Dollar 动画并恢复缓存的原始颜色和尺寸。
+        /// </summary>
+        private void StopDollarTextAnimation()
+        {
+            if (dollarText == null)
+            {
+                return;
+            }
+
+            Transform textTransform = dollarText.transform;
+            dollarText.DOKill();
+            textTransform.DOKill();
+            dollarShowingDelta = false;
+
+            if (hasDollarOriginalState)
+            {
+                dollarText.color = dollarOriginalColor;
+                textTransform.localScale = dollarOriginalScale;
+            }
+        }
+
+        /// <summary>
+        /// 首次动画前记录 Dollar 文本原始颜色和尺寸。
+        /// </summary>
+        private void CacheDollarOriginalState()
+        {
+            if (hasDollarOriginalState || dollarText == null)
+            {
+                return;
+            }
+
+            dollarOriginalColor = dollarText.color;
+            dollarOriginalScale = dollarText.transform.localScale;
+            hasDollarOriginalState = true;
+        }
+
+        /// <summary>
+        /// 写入 Dollar 文本数值，未找到文本时直接跳过。
+        /// </summary>
+        private void SetDollarTextValue(int value)
+        {
+            SetDollarTextValue(value.ToString());
+        }
+
+        /// <summary>
+        /// 写入 Dollar 文本内容，未找到文本时直接跳过。
+        /// </summary>
+        private void SetDollarTextValue(string value)
+        {
+            EnsureDollarText();
+
+            if (dollarText != null)
+            {
+                dollarText.text = value;
+            }
+        }
+
+        /// <summary>
+        /// 格式化金币变化期间临时显示的加数或减数。
+        /// </summary>
+        private static string FormatDeltaText(int deltaValue)
+        {
+            return deltaValue > 0 ? $"+{deltaValue}" : deltaValue.ToString();
+        }
+
+        /// <summary>
+        /// 获取当前游戏流程黑板。
+        /// </summary>
+        private static bool TryGetCurrentBlackboard(out GameFlowBlackboard blackboard)
+        {
+            blackboard = GameFlowRunner.Instance != null && GameFlowRunner.Instance.Controller != null
+                ? GameFlowRunner.Instance.Controller.Blackboard
+                : null;
+
+            return blackboard != null;
         }
 
         /// <summary>
@@ -400,6 +654,65 @@ namespace Anchor.UI.Panel
             }
 
             introductionWindow = GetComponentInChildren<IntroductionWindowController>(true);
+        }
+
+        /// <summary>
+        /// 查找并缓存 Dollar UI 下的金币文本；优先查当前面板，兜底查根节点，适配 HUD 共享 Dollar。
+        /// </summary>
+        private void EnsureDollarText()
+        {
+            if (dollarText != null)
+            {
+                return;
+            }
+
+            dollarText = FindDollarText(transform);
+
+            if (dollarText == null && transform.root != transform)
+            {
+                dollarText = FindDollarText(transform.root);
+            }
+        }
+
+        /// <summary>
+        /// 在指定层级下查找名为 Dollar 的 UI 节点，并返回其子级第一个 TextMeshProUGUI。
+        /// </summary>
+        private static TextMeshProUGUI FindDollarText(Transform root)
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            Transform dollar = FindChildByName(root, DollarObjectName);
+            return dollar != null ? dollar.GetComponentInChildren<TextMeshProUGUI>(true) : null;
+        }
+
+        /// <summary>
+        /// 递归查找指定名称的子节点。
+        /// </summary>
+        private static Transform FindChildByName(Transform root, string targetName)
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            if (root.name == targetName)
+            {
+                return root;
+            }
+
+            for (int i = 0; i < root.childCount; i++)
+            {
+                Transform result = FindChildByName(root.GetChild(i), targetName);
+                if (result != null)
+                {
+                    return result;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -612,6 +925,7 @@ namespace Anchor.UI.Panel
             EnsureBuffCardRoot();
             EnsureRefreshButton();
             EnsureIntroductionWindow();
+            EnsureDollarText();
         }
     }
 }
