@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using Anchor.Character.Attributes;
 using Anchor.GameFlow;
 using Anchor.UI;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -34,12 +36,44 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("显示 Quality 数值的 TextMeshProUGUI。为空时不显示。")]
         private TextMeshProUGUI qualityText;
 
+        [Header("Status Change Animation")]
+        [SerializeField, Min(0.01f), Tooltip("数值变化时膨胀或缩小的动画时长。")]
+        private float statusChangeScaleDuration = 0.12f;
+
+        [SerializeField, Min(0.01f), Tooltip("数值变化后恢复原尺寸和颜色的动画时长。")]
+        private float statusChangeRestoreDuration = 0.18f;
+
+        [SerializeField, Min(1f), Tooltip("数值上升时 Text 膨胀到的倍率。")]
+        private float statusIncreaseScale = 1.18f;
+
+        [SerializeField, Range(0.01f, 1f), Tooltip("数值下降时 Text 缩小到的倍率。")]
+        private float statusDecreaseScale = 0.88f;
+
+        [SerializeField, Tooltip("数值上升时 Text 短暂显示的颜色。")]
+        private Color statusIncreaseColor = Color.green;
+
+        [SerializeField, Tooltip("数值下降时 Text 短暂显示的颜色。")]
+        private Color statusDecreaseColor = Color.red;
+
         [Header("Button")]
         [SerializeField, Tooltip("点击后结束本周行动并关闭 MainPanel 的按钮。")]
         private Button nextWeekButton;
 
         // 当前 MainPanel 关闭后要交还给流程编排器执行的回调。
         private Action onClosed;
+        // 是否已经记录过上一次流程数值；第一次刷新只赋值不播放变化动画。
+        private bool hasStatusSnapshot;
+        // 上一次显示的流程数值，用于判断这次是上升还是下降。
+        private int lastGoldValue;
+        private int lastBugValue;
+        private int lastViewValue;
+        private int lastAudioValue;
+        private int lastWishlistValue;
+        private int lastQualityValue;
+        // 缓存 Text 初始颜色和尺寸，动画结束时恢复到原始样式。
+        private readonly Dictionary<TMP_Text, Color> statusTextOriginalColors = new Dictionary<TMP_Text, Color>();
+        private readonly Dictionary<Transform, Vector3> statusTextOriginalScales = new Dictionary<Transform, Vector3>();
+        private readonly HashSet<TMP_Text> statusTextsShowingDelta = new HashSet<TMP_Text>();
 
         /// <summary>
         /// Panel 启用时注册下一周按钮点击事件和流程数据刷新事件。
@@ -58,6 +92,7 @@ namespace Anchor.UI.Panel
         {
             UnregisterNextWeekButtonClick();
             UnregisterFlowEvents();
+            StopAllStatusTextAnimations();
         }
 
         /// <summary>
@@ -122,13 +157,14 @@ namespace Anchor.UI.Panel
                 return;
             }
 
-            SetText(goldText, $"Gold: {blackboard.Coins}");
-            SetText(bugText, $"Bug: {blackboard.BugScore}");
-            SetText(viewText, $"View: {blackboard.VisualScore}");
-            SetText(audioText, $"Audio: {blackboard.AtmosphereScore}");
+            SetStatusText(goldText, "Gold", blackboard.Coins, lastGoldValue);
+            SetStatusText(bugText, "Bug", blackboard.BugScore, lastBugValue);
+            SetStatusText(viewText, "View", blackboard.VisualScore, lastViewValue);
+            SetStatusText(audioText, "Audio", blackboard.AtmosphereScore, lastAudioValue);
             SetActionPointContainer(blackboard.RemainingActionPoints);
-            SetText(wishlistText, $"Wishlist: {blackboard.WishlistCount}");
-            SetText(qualityText, $"Quality: {blackboard.QualityScore}");
+            SetStatusText(wishlistText, "Wishlist", blackboard.WishlistCount, lastWishlistValue);
+            SetStatusText(qualityText, "Quality", blackboard.QualityScore, lastQualityValue);
+            CacheStatusSnapshot(blackboard);
         }
 
         /// <summary>
@@ -248,6 +284,8 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void SetStatusTextUnavailable()
         {
+            hasStatusSnapshot = false;
+            StopAllStatusTextAnimations();
             SetText(goldText, "Gold: --");
             SetText(bugText, "Bug: --");
             SetText(viewText, "View: --");
@@ -255,6 +293,138 @@ namespace Anchor.UI.Panel
             ClearActionPointContainer();
             SetText(wishlistText, "Wishlist: --");
             SetText(qualityText, "Quality: --");
+        }
+
+        /// <summary>
+        /// 设置流程数值文本，并在已有旧值时按涨跌播放反馈动画。
+        /// </summary>
+        private void SetStatusText(TextMeshProUGUI text, string label, int currentValue, int previousValue)
+        {
+            if (!hasStatusSnapshot || text == null || currentValue == previousValue)
+            {
+                if (text != null && statusTextsShowingDelta.Contains(text))
+                {
+                    return;
+                }
+
+                SetText(text, $"{label}: {currentValue}");
+                return;
+            }
+
+            PlayStatusChangeAnimation(text, label, currentValue, currentValue - previousValue);
+        }
+
+        /// <summary>
+        /// 缓存本次流程数值，供下一次刷新判断涨跌。
+        /// </summary>
+        private void CacheStatusSnapshot(GameFlowBlackboard blackboard)
+        {
+            lastGoldValue = blackboard.Coins;
+            lastBugValue = blackboard.BugScore;
+            lastViewValue = blackboard.VisualScore;
+            lastAudioValue = blackboard.AtmosphereScore;
+            lastWishlistValue = blackboard.WishlistCount;
+            lastQualityValue = blackboard.QualityScore;
+            hasStatusSnapshot = true;
+        }
+
+        /// <summary>
+        /// 数值上升时显示加数、膨胀并变绿；数值下降时显示减数、缩小并变红；随后恢复最终数值和原始样式。
+        /// </summary>
+        private void PlayStatusChangeAnimation(TextMeshProUGUI text, string label, int currentValue, int deltaValue)
+        {
+            CacheOriginalTextState(text);
+
+            bool isIncrease = deltaValue > 0;
+            Transform textTransform = text.transform;
+            Color originalColor = statusTextOriginalColors[text];
+            Vector3 originalScale = statusTextOriginalScales[textTransform];
+            Vector3 targetScale = originalScale * (isIncrease ? statusIncreaseScale : statusDecreaseScale);
+            Color targetColor = isIncrease ? statusIncreaseColor : statusDecreaseColor;
+
+            text.DOKill();
+            textTransform.DOKill();
+            statusTextsShowingDelta.Add(text);
+            text.text = FormatDeltaText(deltaValue);
+            text.color = targetColor;
+            textTransform.localScale = originalScale;
+
+            Sequence sequence = DOTween.Sequence()
+                .SetTarget(text)
+                .SetUpdate(true);
+            sequence.Join(textTransform.DOScale(targetScale, statusChangeScaleDuration).SetEase(Ease.OutQuad));
+            sequence.Append(textTransform.DOScale(originalScale, statusChangeRestoreDuration).SetEase(Ease.OutQuad));
+            sequence.Join(text.DOColor(originalColor, statusChangeRestoreDuration).SetEase(Ease.OutQuad));
+            sequence.OnComplete(() =>
+            {
+                statusTextsShowingDelta.Remove(text);
+                SetText(text, $"{label}: {currentValue}");
+            });
+            sequence.OnKill(() => statusTextsShowingDelta.Remove(text));
+        }
+
+        /// <summary>
+        /// 格式化变化期间临时显示的加数或减数。
+        /// </summary>
+        private static string FormatDeltaText(int deltaValue)
+        {
+            return deltaValue > 0 ? $"+{deltaValue}" : deltaValue.ToString();
+        }
+
+        /// <summary>
+        /// 首次动画前记录 Text 原始颜色和尺寸。
+        /// </summary>
+        private void CacheOriginalTextState(TMP_Text text)
+        {
+            if (!statusTextOriginalColors.ContainsKey(text))
+            {
+                statusTextOriginalColors[text] = text.color;
+            }
+
+            Transform textTransform = text.transform;
+            if (!statusTextOriginalScales.ContainsKey(textTransform))
+            {
+                statusTextOriginalScales[textTransform] = textTransform.localScale;
+            }
+        }
+
+        /// <summary>
+        /// 停止所有状态文本动画，并把 Text 恢复到缓存的原始颜色和尺寸。
+        /// </summary>
+        private void StopAllStatusTextAnimations()
+        {
+            StopStatusTextAnimation(goldText);
+            StopStatusTextAnimation(bugText);
+            StopStatusTextAnimation(viewText);
+            StopStatusTextAnimation(audioText);
+            StopStatusTextAnimation(wishlistText);
+            StopStatusTextAnimation(qualityText);
+        }
+
+        /// <summary>
+        /// 停止单个状态文本动画并恢复原始样式。
+        /// </summary>
+        private void StopStatusTextAnimation(TMP_Text text)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            Transform textTransform = text.transform;
+            text.DOKill();
+            textTransform.DOKill();
+            statusTextsShowingDelta.Remove(text);
+
+            if (statusTextOriginalColors.TryGetValue(text, out Color originalColor))
+            {
+                text.color = originalColor;
+            }
+
+            if (statusTextOriginalScales.TryGetValue(textTransform, out Vector3 originalScale))
+            {
+                textTransform.localScale = originalScale;
+            }
         }
 
         /// <summary>
