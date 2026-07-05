@@ -3505,10 +3505,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: SumPanel
       objectReference: {fileID: 0}
-    - target: {fileID: 3550075515340642338, guid: 96a26b21db55e9546b08d2848117a371, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 7772731563947925461, guid: 96a26b21db55e9546b08d2848117a371, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -6954,6 +6950,7 @@ MonoBehaviour:
   manageButtonInteractable: 1
   disableActiveButton: 1
   activeButtonReturnsToDefaultCamera: 1
+  blockOtherButtonsWhileInteractionActive: 1
 --- !u!1 &1722749739
 GameObject:
   m_ObjectHideFlags: 0
