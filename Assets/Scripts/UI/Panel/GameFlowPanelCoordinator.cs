@@ -298,8 +298,6 @@ namespace Anchor.UI.Panel
 
         /// <summary>
         /// WeekPanel 关闭后继续流程，可能进入下周、月结算或结局。
-        /// 原注释 --- 过期：现在需要先显示 WeekPanel 关闭 Loading，再继续流程。
-        /// WeekPanel 关闭后先显示短暂 Loading，再继续流程，可能进入下周、月结算或结局。
         /// </summary>
         private void OnWeekPanelClosed()
         {
@@ -308,48 +306,12 @@ namespace Anchor.UI.Panel
                 return;
             }
 
-            StartFlowRoutine(ContinueFlowAfterWeekPanelCloseLoading(runner));
-        }
-
-        /// <summary>
-        /// 等待 WeekPanel 关闭 Loading 结束后继续推进流程。
-        /// </summary>
-        private IEnumerator ContinueFlowAfterWeekPanelCloseLoading(GameFlowRunner runner)
-        {
-            yield return PlayWeekPanelCloseLoading();
-
-            if (runner == null || runner.Controller == null)
-            {
-                yield break;
-            }
-
             if (runner.Controller.CurrentState == GameFlowState.WeekResolve)
             {
                 runner.ContinueFlow();
             }
 
-            yield return RouteFlowAfterCurrentState(runner);
-        }
-
-        /// <summary>
-        /// 显示 WeekPanelManager 上配置的关闭 Loading，并等待指定时长。
-        /// </summary>
-        private IEnumerator PlayWeekPanelCloseLoading()
-        {
-            WeekPanelManager weekPanelManager = WeekPanelManager.Instance;
-            float loadingDuration = weekPanelManager != null ? weekPanelManager.CloseLoadingDuration : 0f;
-
-            if (weekPanelManager != null)
-            {
-                weekPanelManager.ShowCloseLoadingOverlay();
-            }
-
-            if (loadingDuration > 0f)
-            {
-                yield return new WaitForSecondsRealtime(loadingDuration);
-            }
-
-            HideWeekPanelCloseLoading();
+            StartFlowRoutine(RouteFlowAfterCurrentState(runner));
         }
 
         /// <summary>
@@ -375,20 +337,7 @@ namespace Anchor.UI.Panel
             }
 
             StopBulletScreen();
-            HideWeekPanelCloseLoading();
             isAdvancingFlow = false;
-        }
-
-        /// <summary>
-        /// 关闭 WeekPanel 配置的 Loading 覆盖层，防止流程被打断时残留。
-        /// </summary>
-        private static void HideWeekPanelCloseLoading()
-        {
-            WeekPanelManager weekPanelManager = WeekPanelManager.Instance;
-            if (weekPanelManager != null)
-            {
-                weekPanelManager.HideCloseLoadingOverlay();
-            }
         }
 
         /// <summary>
