@@ -136,6 +136,7 @@ namespace Anchor.UI.Panel
                 gameObject.SetActive(true);
             }
 
+            ResetRefreshButtonForOpen();
             RefreshDollarText();
             RequestBudgetShopBuffOffersRefresh();
             buffWindowAnimator.Open();
@@ -555,11 +556,12 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 点击刷新按钮后请求流程层刷新月初商店 Buff 候选数据。
+        /// 点击刷新按钮后请求流程层刷新月初商店 Buff 候选数据，并隐藏刷新按钮防止本次打开期间重复点击。
         /// </summary>
         private void OnRefreshButtonClicked()
         {
             RequestBudgetShopBuffOffersRefresh();
+            HideRefreshButtonAfterUse();
         }
 
         /// <summary>
@@ -641,6 +643,42 @@ namespace Anchor.UI.Panel
                     return;
                 }
             }
+        }
+
+        /// <summary>
+        /// 每次打开商店面板时恢复刷新按钮，允许本次打开期间刷新一次。
+        /// </summary>
+        private void ResetRefreshButtonForOpen()
+        {
+            EnsureRefreshButton();
+
+            if (refreshButton == null)
+            {
+                return;
+            }
+
+            if (!refreshButton.gameObject.activeSelf)
+            {
+                refreshButton.gameObject.SetActive(true);
+            }
+
+            refreshButton.interactable = true;
+        }
+
+        /// <summary>
+        /// 刷新按钮使用后立即隐藏，并禁止继续交互。
+        /// </summary>
+        private void HideRefreshButtonAfterUse()
+        {
+            EnsureRefreshButton();
+
+            if (refreshButton == null)
+            {
+                return;
+            }
+
+            refreshButton.interactable = false;
+            refreshButton.gameObject.SetActive(false);
         }
 
         /// <summary>
