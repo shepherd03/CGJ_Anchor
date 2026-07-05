@@ -1,6 +1,7 @@
 using System.Collections;
 using Anchor.Audio;
 using Anchor.GameFlow;
+using Anchor.UI.Transitions;
 using UnityEngine;
 
 namespace Anchor.UI.Panel
@@ -74,12 +75,40 @@ namespace Anchor.UI.Panel
         /// </summary>
         public void StartGame()
         {
+            if (isAdvancingFlow)
+            {
+                return;
+            }
+
+            StartFlowRoutine(StartGameWithTransition());
+        }
+
+        /// <summary>
+        /// 播放开始过渡，在黑场中执行原本的开局 UI 切换。
+        /// </summary>
+        private IEnumerator StartGameWithTransition()
+        {
+            ScreenCircleTransition transition = ScreenCircleTransition.GetOrCreate();
+
+            if (transition == null)
+            {
+                StartGameImmediately();
+                yield break;
+            }
+
+            yield return transition.Play(StartGameImmediately);
+        }
+
+        /// <summary>
+        /// 立即开始一局新游戏，并按当前流程状态打开第一个页面。
+        /// </summary>
+        private void StartGameImmediately()
+        {
             if (!TryGetRunner(out GameFlowRunner runner))
             {
                 return;
             }
 
-            StopFlowRoutine();
             CloseBuffWindow();
             CloseEventPanel();
             CloseMainPanel();
