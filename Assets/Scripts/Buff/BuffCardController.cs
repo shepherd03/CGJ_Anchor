@@ -3,28 +3,28 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 管理单个 BuffCard 的数据注入、文本显示和图标显示。
+/// 管理单个 BuffCard 的 Cost 显示和图标显示。
 /// </summary>
 [DisallowMultipleComponent]
 public class BuffCardController : MonoBehaviour
 {
     [Header("View")]
-    [SerializeField, Tooltip("显示 BuffCard 内容的 TextMeshProUGUI；留空时自动查找自身或子物体上的第一个 TextMeshProUGUI。")]
-    private TextMeshProUGUI contentText;
+    [SerializeField, Tooltip("手动拖拽的 Cost TextMeshProUGUI，只用于显示 Buff 的 Cost。")]
+    private TextMeshProUGUI costText;
 
     [SerializeField, Tooltip("显示 BuffCard 图标的 Image；留空时优先查找 Icon/IconImage/BuffIcon 子物体，最后使用当前物体上的 Image。")]
     private Image iconImage;
 
-    // 当前 BuffCard 持有的文本内容，用于重复刷新显示。
-    private string currentContent = string.Empty;
+    // 当前 BuffCard 持有的 Cost 数值，用于重复刷新显示。
+    private int currentCost;
 
     // 当前 BuffCard 持有的图标 Sprite，用于重复刷新显示。
     private Sprite currentIcon;
 
     /// <summary>
-    /// 当前 BuffCard 持有的文本内容，只读暴露给外部查询。
+    /// 当前 BuffCard 持有的 Cost 数值，只读暴露给外部查询。
     /// </summary>
-    public string CurrentContent => currentContent;
+    public int CurrentCost => currentCost;
 
     /// <summary>
     /// 当前 BuffCard 持有的图标，只读暴露给外部查询。
@@ -32,46 +32,45 @@ public class BuffCardController : MonoBehaviour
     public Sprite CurrentIcon => currentIcon;
 
     /// <summary>
-    /// 初始化文本和图标引用，避免外部注入时找不到显示组件。
+    /// 初始化图标引用；Cost 文本必须手动拖拽，避免自动查找误绑到其他 TMP。
     /// </summary>
     private void Awake()
     {
-        EnsureReferences();
+        EnsureIconReference();
     }
 
     /// <summary>
-    /// 从外部注入 BuffCard 文本数据，并立即刷新文本显示。
+    /// 从外部注入 BuffCard Cost 数据，并立即刷新 Cost 显示。
     /// </summary>
-    public void InjectData(string content)
+    public void InjectData(int cost)
     {
-        currentContent = content ?? string.Empty;
-        RefreshContentText();
+        currentCost = cost;
+        RefreshCostText();
     }
 
     /// <summary>
-    /// 从外部注入 BuffCard 文本和图标数据，并立即刷新显示。
+    /// 从外部注入 BuffCard Cost 和图标数据，并立即刷新显示。
     /// </summary>
-    public void InjectData(string content, Sprite icon)
+    public void InjectData(int cost, Sprite icon)
     {
-        currentContent = content ?? string.Empty;
+        currentCost = cost;
         currentIcon = icon;
-        RefreshContentText();
+        RefreshCostText();
         RefreshIconImage();
     }
 
     /// <summary>
-    /// 根据当前文本内容刷新 TextMeshProUGUI。
+    /// 根据当前 Cost 刷新手动绑定的 TextMeshProUGUI。
     /// </summary>
-    private void RefreshContentText()
+    private void RefreshCostText()
     {
-        EnsureReferences();
-
-        if (contentText == null)
+        if (costText == null)
         {
+            Debug.LogWarning($"{nameof(BuffCardController)} needs a manually assigned Cost TextMeshProUGUI.", this);
             return;
         }
 
-        contentText.text = currentContent;
+        costText.text = currentCost.ToString();
     }
 
     /// <summary>
@@ -79,7 +78,7 @@ public class BuffCardController : MonoBehaviour
     /// </summary>
     private void RefreshIconImage()
     {
-        EnsureReferences();
+        EnsureIconReference();
 
         if (iconImage == null)
         {
@@ -101,19 +100,10 @@ public class BuffCardController : MonoBehaviour
     }
 
     /// <summary>
-    /// 缓存 TextMeshProUGUI 和 Image 引用，优先使用 Inspector 手动配置的组件。
+    /// 缓存 Image 引用，优先使用 Inspector 手动配置的组件。
     /// </summary>
-    private void EnsureReferences()
+    private void EnsureIconReference()
     {
-        if (contentText == null)
-        {
-            contentText = GetComponent<TextMeshProUGUI>();
-            if (contentText == null)
-            {
-                contentText = GetComponentInChildren<TextMeshProUGUI>(true);
-            }
-        }
-
         if (iconImage == null)
         {
             iconImage = FindIconImage();

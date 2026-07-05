@@ -179,17 +179,17 @@ namespace Anchor.UI.Panel
         {
             if (buffRow == null)
             {
-                InjectIntroductionData(string.Empty, string.Empty, string.Empty);
+                InjectIntroductionData(string.Empty, string.Empty, string.Empty, 0);
                 return;
             }
 
-            InjectIntroductionData(buffRow.Title, buffRow.Brief, buffRow.Content);
+            InjectIntroductionData(buffRow.Title, buffRow.Brief, buffRow.Content, buffRow.Cost);
         }
 
         /// <summary>
-        /// 从外部注入介绍弹窗文本数据，并立即刷新二级介绍弹窗。
+        /// 从外部注入介绍弹窗文本和 Cost 数据，并立即刷新二级介绍弹窗。
         /// </summary>
-        public void InjectIntroductionData(string title, string brief, string content)
+        public void InjectIntroductionData(string title, string brief, string content, int cost)
         {
             EnsureIntroductionWindow();
 
@@ -199,11 +199,19 @@ namespace Anchor.UI.Panel
                 return;
             }
 
-            introductionWindow.InjectData(title, brief, content);
+            introductionWindow.InjectData(title, brief, content, cost);
         }
 
         /// <summary>
-        /// 打开二级介绍弹窗，并用指定 Buff 数据刷新标题、简介和正文。
+        /// 兼容旧调用：未传 Cost 时按 0 显示。
+        /// </summary>
+        public void InjectIntroductionData(string title, string brief, string content)
+        {
+            InjectIntroductionData(title, brief, content, 0);
+        }
+
+        /// <summary>
+        /// 打开二级介绍弹窗，并用指定 Buff 数据刷新标题、简介、正文和 Cost。
         /// </summary>
         public void OpenIntroductionWindow(BuffRow buffRow)
         {
@@ -408,7 +416,7 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 生成单个 BuffCard，并用 Buff 表里的 Title 填充卡片文本和图标。
+        /// 生成单个 BuffCard，并用 Buff 表里的 Cost 填充卡片文本、Title 查找图标。
         /// </summary>
         private void CreateBuffCard(BuffRow buffRow, int index)
         {
@@ -417,7 +425,7 @@ namespace Anchor.UI.Panel
             Sprite buffIcon = LoadBuffIconByTitle(buffTitle);
 
             buffCard.name = $"{buffCardPrefab.name}_{index + 1}";
-            buffCard.InjectData(buffTitle, buffIcon);
+            buffCard.InjectData(buffRow.Cost, buffIcon);
             RegisterBuffCardClick(buffCard, buffRow);
             generatedBuffCards.Add(buffCard);
         }

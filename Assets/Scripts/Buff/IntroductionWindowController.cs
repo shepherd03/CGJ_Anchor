@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 管理 BuffWindow 二级介绍弹窗的标题、简介和正文文本。
+/// 管理 BuffWindow 二级介绍弹窗的标题、简介、正文和 Cost 文本。
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class IntroductionWindowController : MonoBehaviour
@@ -18,6 +18,9 @@ public sealed class IntroductionWindowController : MonoBehaviour
 
     [SerializeField, Tooltip("显示 Buff 正文说明的 TextMeshProUGUI。")]
     private TextMeshProUGUI contentText;
+
+    [SerializeField, Tooltip("显示 Buff Cost 数值的 TextMeshProUGUI。")]
+    private TextMeshProUGUI costText;
 
     [Header("Button")]
     [SerializeField, Tooltip("点击后关闭 Buff 介绍二级弹窗的按钮。")]
@@ -34,6 +37,9 @@ public sealed class IntroductionWindowController : MonoBehaviour
 
     // 当前正文文本，用于外部查询和重复刷新。
     private string currentContent = string.Empty;
+
+    // 当前 Cost 数值，用于外部查询和重复刷新。
+    private int currentCost;
 
     // 当前购买按钮回调；由 WindowShopPanelManager 注入真实购买逻辑。
     private Action buyAction;
@@ -52,6 +58,11 @@ public sealed class IntroductionWindowController : MonoBehaviour
     /// 当前弹窗正文，只读暴露给外部查询。
     /// </summary>
     public string CurrentContent => currentContent;
+
+    /// <summary>
+    /// 当前弹窗 Cost，只读暴露给外部查询。
+    /// </summary>
+    public int CurrentCost => currentCost;
 
     /// <summary>
     /// 初始化文本引用，避免首次注入数据时找不到显示组件。
@@ -100,13 +111,22 @@ public sealed class IntroductionWindowController : MonoBehaviour
     }
 
     /// <summary>
-    /// 从外部注入完整介绍弹窗数据，并立即刷新三个文本。
+    /// 从外部注入完整介绍弹窗数据，并立即刷新标题、简介、正文和 Cost 文本。
     /// </summary>
-    public void InjectData(string title, string brief, string content)
+    public void InjectData(string title, string brief, string content, int cost)
     {
         SetTitle(title);
         SetBrief(brief);
         SetContent(content);
+        SetCost(cost);
+    }
+
+    /// <summary>
+    /// 兼容旧调用：未传 Cost 时按 0 显示。
+    /// </summary>
+    public void InjectData(string title, string brief, string content)
+    {
+        InjectData(title, brief, content, 0);
     }
 
     /// <summary>
@@ -140,11 +160,21 @@ public sealed class IntroductionWindowController : MonoBehaviour
     }
 
     /// <summary>
+    /// 设置 Buff Cost 文本。
+    /// </summary>
+    public void SetCost(int cost)
+    {
+        currentCost = cost;
+        EnsureTextReferences();
+        SetText(costText, currentCost.ToString());
+    }
+
+    /// <summary>
     /// 清空介绍弹窗的全部文本。
     /// </summary>
     public void Clear()
     {
-        InjectData(string.Empty, string.Empty, string.Empty);
+        InjectData(string.Empty, string.Empty, string.Empty, 0);
     }
 
     /// <summary>
@@ -238,7 +268,7 @@ public sealed class IntroductionWindowController : MonoBehaviour
     }
 
     /// <summary>
-    /// 缓存三个 TextMeshProUGUI 引用，优先使用 Inspector 手动配置的组件。
+    /// 缓存 TextMeshProUGUI 引用，优先使用 Inspector 手动配置的组件。
     /// </summary>
     private void EnsureTextReferences()
     {
@@ -257,6 +287,11 @@ public sealed class IntroductionWindowController : MonoBehaviour
         if (contentText == null)
         {
             contentText = FindTextByName("Content", ref cachedTexts);
+        }
+
+        if (costText == null)
+        {
+            costText = FindTextByName("Cost", ref cachedTexts);
         }
     }
 
@@ -334,7 +369,7 @@ public sealed class IntroductionWindowController : MonoBehaviour
     }
 
     /// <summary>
-    /// 编辑器添加组件时按 Title、Brief、Content 子物体名自动填充文本引用。
+    /// 编辑器添加组件时按 Title、Brief、Content、Cost 子物体名自动填充文本引用。
     /// </summary>
     private void Reset()
     {
