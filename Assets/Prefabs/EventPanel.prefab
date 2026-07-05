@@ -933,6 +933,8 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 4b8b80ae6d0eafb41b8e34a156aa8e51, type: 3}
   - {fileID: 21300000, guid: f92f8b5071b78a04796a4e486dd2e986, type: 3}
   - {fileID: 21300000, guid: 2fd42414a63ef9444ba5176d9e7d819d, type: 3}
+  - {fileID: 21300000, guid: f92f8b5071b78a04796a4e486dd2e986, type: 3}
+  - {fileID: 21300000, guid: f92f8b5071b78a04796a4e486dd2e986, type: 3}
   eventName: {fileID: 6022004585568762516}
   eventContent: {fileID: 4780255732053519521}
   yesLabel: {fileID: 8395848474047795865}
