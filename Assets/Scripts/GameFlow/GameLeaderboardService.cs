@@ -10,6 +10,8 @@ namespace Anchor.GameFlow
     {
         public readonly int Rank;
         public readonly string RunId;
+        public readonly int LeaderboardScore;
+        public readonly int QualityScore;
         public readonly int WishlistCount;
         public readonly string EndingId;
         public readonly string EndingDisplayName;
@@ -19,6 +21,8 @@ namespace Anchor.GameFlow
         internal GameLeaderboardEntry(
             int rank,
             string runId,
+            int leaderboardScore,
+            int qualityScore,
             int wishlistCount,
             string endingId,
             string endingDisplayName,
@@ -27,6 +31,8 @@ namespace Anchor.GameFlow
         {
             Rank = rank;
             RunId = runId;
+            LeaderboardScore = leaderboardScore;
+            QualityScore = qualityScore;
             WishlistCount = wishlistCount;
             EndingId = endingId;
             EndingDisplayName = endingDisplayName;
@@ -40,6 +46,11 @@ namespace Anchor.GameFlow
     public static class GameLeaderboardService
     {
         private const string SaveFileName = "game_leaderboard.json";
+        private const double QualityPower = 1.1d;
+        private const double QualityMultiplier = 100d;
+        private const double WishlistBonusWeight = 0.25d;
+        private const double WishlistNormalizeValue = 1_000_000d;
+        private const double WishlistPower = 0.6d;
 
         private static LeaderboardSaveData sData;
         private static bool sLoaded;
@@ -53,17 +64,27 @@ namespace Anchor.GameFlow
                 throw new ArgumentNullException(nameof(blackboard));
             }
 
-            return RecordGameEnd(blackboard.WishlistCount, ending);
+            return RecordGameEnd(blackboard.QualityScore, blackboard.WishlistCount, ending);
         }
 
         public static GameLeaderboardEntry RecordGameEnd(int wishlistCount, EndingResult ending)
         {
+            return RecordGameEnd(0, wishlistCount, ending);
+        }
+
+        public static GameLeaderboardEntry RecordGameEnd(int qualityScore, int wishlistCount, EndingResult ending)
+        {
             EnsureLoaded();
 
+            int resolvedQualityScore = Math.Max(0, qualityScore);
+            int resolvedWishlistCount = Math.Max(0, wishlistCount);
+            int leaderboardScore = CalculateLeaderboardScore(resolvedQualityScore, resolvedWishlistCount);
             var record = new SerializableLeaderboardEntry
             {
                 runId = Guid.NewGuid().ToString("N"),
-                wishlistCount = Math.Max(0, wishlistCount),
+                leaderboardScore = leaderboardScore,
+                qualityScore = resolvedQualityScore,
+                wishlistCount = resolvedWishlistCount,
                 endingId = NullToEmpty(ending.EndingId),
                 endingDisplayName = NullToEmpty(ending.DisplayName),
                 endingSummary = NullToEmpty(ending.Summary),
@@ -77,6 +98,22 @@ namespace Anchor.GameFlow
 
             var rank = sData.entries.IndexOf(record) + 1;
             return ToEntry(record, rank);
+        }
+
+        public static int CalculateLeaderboardScore(int qualityScore, int wishlistCount)
+        {
+            double normalizedQuality = Math.Max(0, qualityScore);
+            double normalizedWishlist = Math.Max(0, wishlistCount);
+            double qualityScorePart = Math.Pow(normalizedQuality, QualityPower) * QualityMultiplier;
+            double wishlistBonus = 1d + WishlistBonusWeight * Math.Pow(normalizedWishlist / WishlistNormalizeValue, WishlistPower);
+            double score = qualityScorePart * wishlistBonus;
+
+            if (score >= int.MaxValue)
+            {
+                return int.MaxValue;
+            }
+
+            return (int)Math.Round(score);
         }
 
         public static IReadOnlyList<GameLeaderboardEntry> GetRankings(int maxCount = 0)
@@ -138,6 +175,7 @@ namespace Anchor.GameFlow
 
                 var data = JsonUtility.FromJson<LeaderboardSaveData>(json) ?? new LeaderboardSaveData();
                 data.entries ??= new List<SerializableLeaderboardEntry>();
+                NormalizeEntries(data.entries);
                 data.nextSequence = Math.Max(data.nextSequence, GetNextSequence(data.entries));
                 return data;
             }
@@ -169,11 +207,45 @@ namespace Anchor.GameFlow
 
         private static void SortEntries(List<SerializableLeaderboardEntry> entries)
         {
+            NormalizeEntries(entries);
             entries.Sort(CompareEntries);
+        }
+
+        private static void NormalizeEntries(List<SerializableLeaderboardEntry> entries)
+        {
+            if (entries == null)
+            {
+                return;
+            }
+
+            for (var i = 0; i < entries.Count; i++)
+            {
+                var entry = entries[i];
+                entry.qualityScore = Math.Max(0, entry.qualityScore);
+                entry.wishlistCount = Math.Max(0, entry.wishlistCount);
+                entry.completedAtUtcTicks = Math.Max(0, entry.completedAtUtcTicks);
+
+                if (entry.leaderboardScore <= 0)
+                {
+                    entry.leaderboardScore = CalculateLeaderboardScore(entry.qualityScore, entry.wishlistCount);
+                }
+            }
         }
 
         private static int CompareEntries(SerializableLeaderboardEntry left, SerializableLeaderboardEntry right)
         {
+            var scoreCompare = right.leaderboardScore.CompareTo(left.leaderboardScore);
+            if (scoreCompare != 0)
+            {
+                return scoreCompare;
+            }
+
+            var qualityCompare = right.qualityScore.CompareTo(left.qualityScore);
+            if (qualityCompare != 0)
+            {
+                return qualityCompare;
+            }
+
             var wishlistCompare = right.wishlistCount.CompareTo(left.wishlistCount);
             if (wishlistCompare != 0)
             {
@@ -202,10 +274,18 @@ namespace Anchor.GameFlow
 
         private static GameLeaderboardEntry ToEntry(SerializableLeaderboardEntry entry, int rank)
         {
+            int qualityScore = Math.Max(0, entry.qualityScore);
+            int wishlistCount = Math.Max(0, entry.wishlistCount);
+            int leaderboardScore = entry.leaderboardScore > 0
+                ? entry.leaderboardScore
+                : CalculateLeaderboardScore(qualityScore, wishlistCount);
+
             return new GameLeaderboardEntry(
                 rank,
                 NullToEmpty(entry.runId),
-                Math.Max(0, entry.wishlistCount),
+                leaderboardScore,
+                qualityScore,
+                wishlistCount,
                 NullToEmpty(entry.endingId),
                 NullToEmpty(entry.endingDisplayName),
                 NullToEmpty(entry.endingSummary),
@@ -228,6 +308,8 @@ namespace Anchor.GameFlow
         private sealed class SerializableLeaderboardEntry
         {
             public string runId;
+            public int leaderboardScore;
+            public int qualityScore;
             public int wishlistCount;
             public string endingId;
             public string endingDisplayName;

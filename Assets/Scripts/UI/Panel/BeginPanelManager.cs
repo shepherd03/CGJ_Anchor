@@ -108,12 +108,22 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("点击后开始新游戏并关闭当前 BeginPanel 的按钮。")]
         private Button startButton;
 
+        [SerializeField, Tooltip("点击后打开排行榜面板的按钮。")]
+        private Button leaderboardButton;
+
+        [Header("Leaderboard")]
+        [SerializeField, Tooltip("排行榜面板 Prefab；场景里没有现成排行榜面板时会实例化它。")]
+        private LeaderboardPanelManager leaderboardPanelPrefab;
+
+        private LeaderboardPanelManager runtimeLeaderboardPanel;
+
         /// <summary>
-        /// Panel 启用时注册开始按钮点击事件。
+        /// Panel 启用时注册按钮点击事件。
         /// </summary>
         private void OnEnable()
         {
-            RegisterButtonClick();
+            EnsureButtonReferences();
+            RegisterButtonClicks();
         }
 
         /// <summary>
@@ -121,7 +131,7 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void OnDisable()
         {
-            UnregisterButtonClick();
+            UnregisterButtonClicks();
         }
 
         /// <summary>
@@ -133,31 +143,60 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
-        /// 给开始按钮注册点击事件。
+        /// 排行榜按钮点击后弹出排行榜面板。
         /// </summary>
-        private void RegisterButtonClick()
+        private void OnLeaderboardButtonClicked()
+        {
+            LeaderboardPanelManager panel = ResolveLeaderboardPanel();
+            if (panel == null)
+            {
+                Debug.LogWarning($"{nameof(BeginPanelManager)} cannot find or create {nameof(LeaderboardPanelManager)}.", this);
+                return;
+            }
+
+            panel.Open();
+        }
+
+        /// <summary>
+        /// 给按钮注册点击事件。
+        /// </summary>
+        private void RegisterButtonClicks()
         {
             if (startButton == null)
             {
                 Debug.LogWarning($"{nameof(BeginPanelManager)} needs a start button.", this);
-                return;
+            }
+            else
+            {
+                startButton.onClick.RemoveListener(OnStartButtonClicked);
+                startButton.onClick.AddListener(OnStartButtonClicked);
             }
 
-            startButton.onClick.RemoveListener(OnStartButtonClicked);
-            startButton.onClick.AddListener(OnStartButtonClicked);
+            if (leaderboardButton == null)
+            {
+                Debug.LogWarning($"{nameof(BeginPanelManager)} needs a leaderboard button.", this);
+            }
+            else
+            {
+                leaderboardButton.onClick.RemoveListener(OnLeaderboardButtonClicked);
+                leaderboardButton.onClick.AddListener(OnLeaderboardButtonClicked);
+            }
         }
 
         /// <summary>
-        /// 移除开始按钮点击事件。
+        /// 移除按钮点击事件。
         /// </summary>
-        private void UnregisterButtonClick()
+        private void UnregisterButtonClicks()
         {
-            if (startButton == null)
+            if (startButton != null)
             {
-                return;
+                startButton.onClick.RemoveListener(OnStartButtonClicked);
             }
 
-            startButton.onClick.RemoveListener(OnStartButtonClicked);
+            if (leaderboardButton != null)
+            {
+                leaderboardButton.onClick.RemoveListener(OnLeaderboardButtonClicked);
+            }
         }
 
         /// <summary>
@@ -179,15 +218,60 @@ namespace Anchor.UI.Panel
             gameObject.SetActive(false);
         }
 
+        private LeaderboardPanelManager ResolveLeaderboardPanel()
+        {
+            if (runtimeLeaderboardPanel != null)
+            {
+                return runtimeLeaderboardPanel;
+            }
+
+            runtimeLeaderboardPanel = LeaderboardPanelManager.Instance;
+            if (runtimeLeaderboardPanel != null)
+            {
+                return runtimeLeaderboardPanel;
+            }
+
+            if (leaderboardPanelPrefab == null)
+            {
+                return null;
+            }
+
+            Transform parent = ResolvePanelParent();
+            runtimeLeaderboardPanel = Instantiate(leaderboardPanelPrefab, parent, false);
+            runtimeLeaderboardPanel.name = leaderboardPanelPrefab.name;
+            return runtimeLeaderboardPanel;
+        }
+
+        private Transform ResolvePanelParent()
+        {
+            Canvas canvas = GetComponentInParent<Canvas>();
+            if (canvas != null)
+            {
+                return canvas.transform;
+            }
+
+            return transform.parent != null ? transform.parent : transform;
+        }
+
+        private void EnsureButtonReferences()
+        {
+            if (startButton == null)
+            {
+                startButton = transform.Find("Start")?.GetComponent<Button>();
+            }
+
+            if (leaderboardButton == null)
+            {
+                leaderboardButton = transform.Find("Leaderboard")?.GetComponent<Button>();
+            }
+        }
+
         /// <summary>
         /// 挂到 Button 本体时自动填充按钮引用。
         /// </summary>
         private void Reset()
         {
-            if (startButton == null)
-            {
-                startButton = GetComponent<Button>();
-            }
+            EnsureButtonReferences();
         }
     }
 }
