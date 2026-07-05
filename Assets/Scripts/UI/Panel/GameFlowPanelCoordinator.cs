@@ -1,4 +1,5 @@
 using System.Collections;
+using Anchor.Audio;
 using Anchor.GameFlow;
 using UnityEngine;
 
@@ -85,6 +86,7 @@ namespace Anchor.UI.Panel
             CloseWeekPanel();
             CloseGameEndPanel();
             runner.StartNewGame();
+            MenuGameBgmPlayer.PlayGameMusic();
             CloseBeginPanel();
             RouteCurrentState(runner);
         }
@@ -102,6 +104,7 @@ namespace Anchor.UI.Panel
             CloseGameEndPanel();
             ResetCurrentGameFlowForBeginPanel();
             OpenBeginPanel();
+            MenuGameBgmPlayer.PlayMenuMusic();
         }
 
         /// <summary>

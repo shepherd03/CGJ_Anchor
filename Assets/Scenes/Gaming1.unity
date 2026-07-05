@@ -2691,6 +2691,7 @@ GameObject:
   - component: {fileID: 685587466}
   - component: {fileID: 685587465}
   - component: {fileID: 685587469}
+  - component: {fileID: 685587470}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -2802,6 +2803,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   bulletScreenController: {fileID: 1863866710}
   bulletScreenDuration: 4
+--- !u!114 &685587470
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 685587464}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb4148409aa4d83a9f4bfa39c28ae39, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  menuClip: {fileID: 8300000, guid: 55473dc70341553468d36c9997f781c3, type: 3}
+  gameClip: {fileID: 8300000, guid: 750a262dd92eae049abb69243b5e6f4d, type: 3}
+  volume: 1
+  fadeDuration: 1.5
+  playMenuOnStart: 1
 --- !u!1 &689247183
 GameObject:
   m_ObjectHideFlags: 0
