@@ -9971,6 +9971,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 685587468}
     m_Modifications:
+    - target: {fileID: 1714822048181649770, guid: d7f2efce107218847968b2b1d37acdb4, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2889323527577053026, guid: d7f2efce107218847968b2b1d37acdb4, type: 3}
       propertyPath: m_Name
       value: BeginPanel

@@ -6,6 +6,9 @@ namespace Anchor.GameFlow
 {
     public sealed class GameFlowResolveService
     {
+        private const int EndingQualityThreshold = 60;
+        private const int EndingWishlistThreshold = 4_000_000;
+
         public WeekResolveResult ResolveWeek(GameFlowBlackboard blackboard)
         {
             if (blackboard == null)
@@ -88,22 +91,25 @@ namespace Anchor.GameFlow
                 throw new ArgumentNullException(nameof(blackboard));
             }
 
-            if (blackboard.QualityScore >= 220 && blackboard.WishlistCount >= 900 && blackboard.BugScore <= 20)
+            bool hasHighQuality = blackboard.QualityScore > EndingQualityThreshold;
+            bool hasManyWishlists = blackboard.WishlistCount > EndingWishlistThreshold;
+
+            if (!hasHighQuality && !hasManyWishlists)
             {
-                return new EndingResult("hit", "好评如潮", "质量、愿望单和稳定性都达到了优秀线。");
+                return new EndingResult("unnoticed", "无人问津", "质量分低于上线标准，愿望单也没有形成足够声量。");
             }
 
-            if (blackboard.QualityScore >= 160 && blackboard.WishlistCount >= 550)
+            if (hasHighQuality && !hasManyWishlists)
             {
-                return new EndingResult("boutique", "小众精品", "整体完成度不错，积累了一批稳定玩家。");
+                return new EndingResult("boutique", "小众精品", "游戏质量不错，但愿望单规模仍偏小。");
             }
 
-            if (blackboard.BugScore >= 55)
+            if (!hasHighQuality)
             {
-                return new EndingResult("buggy", "无人问津", "Bug 压过了游戏亮点，口碑没有撑起来。");
+                return new EndingResult("crash", "暴死结局", "愿望单很多，但质量分没有撑住正式上线。");
             }
 
-            return new EndingResult("storm", "暴死结局", "质量和热度都不足以支撑正式上线。");
+            return new EndingResult("hit", "好评如潮", "质量和愿望单都达到了爆发线。");
         }
 
         private static float GetWishlistMultiplier(MonthSettlementType type)
