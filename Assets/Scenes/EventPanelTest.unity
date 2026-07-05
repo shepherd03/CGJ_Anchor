@@ -2857,6 +2857,8 @@ MonoBehaviour:
   closeShrinkDuration: 0.24
   closeExpandEase: 6
   closeShrinkEase: 26
+  loadingResourcePath: Loading
+  loadingDuration: 2
 --- !u!1 &1494136285
 GameObject:
   m_ObjectHideFlags: 0
@@ -4617,18 +4619,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 685587468}
     m_Modifications:
-    - target: {fileID: 880000000000000002, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 0.657681
-      objectReference: {fileID: 0}
-    - target: {fileID: 880000000000000002, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: -38
-      objectReference: {fileID: 0}
-    - target: {fileID: 880000000000000004, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
-      propertyPath: m_Sprite
-      value: 
-      objectReference: {fileID: 21300000, guid: df47f5a587b07da479ab66040266ffc5, type: 3}
     - target: {fileID: 2975336608072481967, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -4717,22 +4707,6 @@ PrefabInstance:
       propertyPath: m_fontMaterial
       value: 
       objectReference: {fileID: 1912603034}
-    - target: {fileID: 6720199877247011947, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
-      propertyPath: panelBackgrounds.Array.data[0]
-      value: 
-      objectReference: {fileID: 21300000, guid: 102f347083ae814489ed39c979908474, type: 3}
-    - target: {fileID: 6720199877247011947, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
-      propertyPath: panelBackgrounds.Array.data[1]
-      value: 
-      objectReference: {fileID: 21300000, guid: df47f5a587b07da479ab66040266ffc5, type: 3}
-    - target: {fileID: 6720199877247011947, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
-      propertyPath: panelBackgrounds.Array.data[2]
-      value: 
-      objectReference: {fileID: 21300000, guid: 086697ffce728ca46918d834f70c6e18, type: 3}
-    - target: {fileID: 6720199877247011947, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
-      propertyPath: panelBackgrounds.Array.data[3]
-      value: 
-      objectReference: {fileID: 21300000, guid: de61be82feaa79141bf3ae130c18613c, type: 3}
     - target: {fileID: 8395848474047795865, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
       propertyPath: m_fontMaterial
       value: 
