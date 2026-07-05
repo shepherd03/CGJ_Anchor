@@ -88,23 +88,23 @@ public sealed class FloatingUIManager : MonoBehaviour
     /// <summary>
     /// 组件启用时注册前两个子按钮的音效行动点消耗事件。
     /// 过期：现在注册的是当前 Type 配置的行动点消耗事件。
-    /// 新注释：同时监听玩家行动点变化，并刷新三个 APGain 文本。
+    /// 新注释：同时监听玩家属性变化，并刷新三个 APGain 文本为点击后的效果范围。
     /// </summary>
     private void OnEnable()
     {
         RegisterChildButtonClicks();
-        RegisterActionPointChangedEvent();
+        RegisterPlayerAttributeChangedEvent();
         RefreshActionPointGainTexts();
     }
 
     /// <summary>
     /// 组件禁用时移除子按钮事件，避免重复注册。
-    /// 新注释：同时注销玩家行动点变化事件，避免 inactive UI 继续接收回调。
+    /// 新注释：同时注销玩家属性变化事件，避免 inactive UI 继续接收回调。
     /// </summary>
     private void OnDisable()
     {
         UnregisterChildButtonClicks();
-        UnregisterActionPointChangedEvent();
+        UnregisterPlayerAttributeChangedEvent();
     }
 
     /// <summary>
@@ -293,6 +293,8 @@ public sealed class FloatingUIManager : MonoBehaviour
 
     /// <summary>
     /// 缓存当前物体子级中名为 APGain 的三个 TextMeshProUGUI 文本。
+    /// 过期：全层级顺序查找会让 APGain 和按钮点击效果错位。
+    /// 新注释：按前三个直接子按钮分别查找其子级 APGain 文本，保证文本对应同下标按钮。
     /// </summary>
     private void CacheActionPointGainTexts()
     {
@@ -301,19 +303,85 @@ public sealed class FloatingUIManager : MonoBehaviour
             actionPointGainTexts[i] = null;
         }
 
-        TextMeshProUGUI[] texts = GetComponentsInChildren<TextMeshProUGUI>(true);
-        int cachedCount = 0;
+        for (int i = 0; i < actionPointGainTexts.Length; i++)
+        {
+            Transform child = transform.childCount > i ? transform.GetChild(i) : null;
+            actionPointGainTexts[i] = child != null ? FindActionPointGainText(child) : null;
+        }
 
-        for (int i = 0; i < texts.Length && cachedCount < actionPointGainTexts.Length; i++)
+        FillMissingActionPointGainTextsFromWholeHierarchy();
+    }
+
+    /// <summary>
+    /// 在指定按钮层级下查找名为 APGain 的 TextMeshProUGUI。
+    /// </summary>
+    private static TextMeshProUGUI FindActionPointGainText(Transform root)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        TextMeshProUGUI[] texts = root.GetComponentsInChildren<TextMeshProUGUI>(true);
+        for (int i = 0; i < texts.Length; i++)
+        {
+            if (texts[i] != null && texts[i].name == ActionPointGainTextName)
+            {
+                return texts[i];
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 兼容旧层级：如果 APGain 不在对应按钮子级下，再按原全层级顺序补齐空位。
+    /// </summary>
+    private void FillMissingActionPointGainTextsFromWholeHierarchy()
+    {
+        TextMeshProUGUI[] texts = GetComponentsInChildren<TextMeshProUGUI>(true);
+        int missingIndex = 0;
+
+        for (int i = 0; i < texts.Length; i++)
         {
             if (texts[i] == null || texts[i].name != ActionPointGainTextName)
             {
                 continue;
             }
 
-            actionPointGainTexts[cachedCount] = texts[i];
-            cachedCount++;
+            if (IsActionPointGainTextCached(texts[i]))
+            {
+                continue;
+            }
+
+            while (missingIndex < actionPointGainTexts.Length && actionPointGainTexts[missingIndex] != null)
+            {
+                missingIndex++;
+            }
+
+            if (missingIndex >= actionPointGainTexts.Length)
+            {
+                return;
+            }
+
+            actionPointGainTexts[missingIndex] = texts[i];
         }
+    }
+
+    /// <summary>
+    /// 判断 APGain 文本是否已经绑定到某个按钮槽位。
+    /// </summary>
+    private bool IsActionPointGainTextCached(TextMeshProUGUI text)
+    {
+        for (int i = 0; i < actionPointGainTexts.Length; i++)
+        {
+            if (actionPointGainTexts[i] == text)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -333,8 +401,10 @@ public sealed class FloatingUIManager : MonoBehaviour
 
     /// <summary>
     /// 注册玩家行动点变化事件，用于消费行动点后同步刷新 APGain 文本。
+    /// 过期：APGain 现在展示点击后的效果范围，不再展示剩余行动点。
+    /// 新注释：注册玩家属性变化事件，用于属性边界或临时加成变化后刷新 APGain 文本。
     /// </summary>
-    private void RegisterActionPointChangedEvent()
+    private void RegisterPlayerAttributeChangedEvent()
     {
         EventKit.Type.UnRegister<CharacterAttributeChangedEvent>(OnCharacterAttributeChanged);
         EventKit.Type.Register<CharacterAttributeChangedEvent>(OnCharacterAttributeChanged);
@@ -342,64 +412,134 @@ public sealed class FloatingUIManager : MonoBehaviour
 
     /// <summary>
     /// 注销玩家行动点变化事件。
+    /// 过期：APGain 现在展示点击后的效果范围，不再展示剩余行动点。
+    /// 新注释：注销玩家属性变化事件。
     /// </summary>
-    private void UnregisterActionPointChangedEvent()
+    private void UnregisterPlayerAttributeChangedEvent()
     {
         EventKit.Type.UnRegister<CharacterAttributeChangedEvent>(OnCharacterAttributeChanged);
     }
 
     /// <summary>
     /// 玩家当前周行动点变化时，同步刷新三个 APGain 文本。
+    /// 过期：APGain 现在展示点击后的效果范围，不再展示剩余行动点。
+    /// 新注释：当前玩家属性变化时，同步刷新三个 APGain 文本，保证临时加成变化后 UI 立刻更新。
     /// </summary>
     private void OnCharacterAttributeChanged(CharacterAttributeChangedEvent attributeEvent)
     {
-        if (attributeEvent.AttributeId != CharacterAttributeIds.WeeklyActionPower)
-        {
-            return;
-        }
-
         if (!IsCurrentPlayerAttributeSet(attributeEvent.AttributeSet))
         {
             return;
         }
 
-        RefreshActionPointGainTexts(attributeEvent.CurrentValue);
+        RefreshActionPointGainTexts();
     }
 
     /// <summary>
     /// 用当前流程黑板里的剩余行动点刷新三个 APGain 文本。
+    /// 过期：APGain 现在展示点击后的效果范围，不再展示剩余行动点。
+    /// 新注释：用当前流程黑板里的房间行动效果边界刷新三个 APGain 文本。
     /// </summary>
     private void RefreshActionPointGainTexts()
     {
-        if (TryGetCurrentRemainingActionPoints(out int remainingActionPoints))
+        if (TryGetCurrentBlackboard(out GameFlowBlackboard blackboard))
         {
-            RefreshActionPointGainTexts(remainingActionPoints);
+            RefreshActionPointGainTexts(blackboard);
+            return;
         }
+
+        ClearActionPointGainTexts();
     }
 
     /// <summary>
     /// 用指定剩余行动点数刷新三个 APGain 文本。
+    /// 过期：APGain 现在展示点击后的效果范围，不再展示剩余行动点。
+    /// 新注释：用指定流程黑板刷新三个 APGain 文本，第一个按钮预览 1AP 效果，第二个按钮预览 2AP 效果。
     /// </summary>
-    private void RefreshActionPointGainTexts(int remainingActionPoints)
+    private void RefreshActionPointGainTexts(GameFlowBlackboard blackboard)
     {
         CacheMissingActionPointGainTexts();
 
-        string actionPointText = Mathf.Max(0, remainingActionPoints).ToString();
         for (int i = 0; i < actionPointGainTexts.Length; i++)
         {
             if (actionPointGainTexts[i] != null)
             {
-                actionPointGainTexts[i].text = actionPointText;
+                actionPointGainTexts[i].text = GetActionPointGainText(blackboard, i);
             }
         }
     }
 
     /// <summary>
-    /// 获取当前流程中的剩余行动点。
+    /// 清空所有 APGain 文本，避免没有流程数据时显示旧值。
     /// </summary>
-    private static bool TryGetCurrentRemainingActionPoints(out int remainingActionPoints)
+    private void ClearActionPointGainTexts()
     {
-        remainingActionPoints = 0;
+        CacheMissingActionPointGainTexts();
+
+        for (int i = 0; i < actionPointGainTexts.Length; i++)
+        {
+            if (actionPointGainTexts[i] != null)
+            {
+                actionPointGainTexts[i].text = string.Empty;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 获取指定按钮点击后会执行的房间行动效果范围文本。
+    /// </summary>
+    private string GetActionPointGainText(GameFlowBlackboard blackboard, int buttonIndex)
+    {
+        if (blackboard == null || !TryGetActionPointsForButton(buttonIndex, out int points))
+        {
+            return string.Empty;
+        }
+
+        GameDevelopmentTrack track = GetDevelopmentTrack(type);
+        return blackboard.TryGetRoomActionEffectRange(track, points, out int minValue, out int maxValue)
+            ? FormatEffectRange(minValue, maxValue)
+            : string.Empty;
+    }
+
+    /// <summary>
+    /// 获取 Floating UI 子按钮对应的消耗点数；第三个按钮当前没有行动效果。
+    /// </summary>
+    private static bool TryGetActionPointsForButton(int buttonIndex, out int points)
+    {
+        points = buttonIndex switch
+        {
+            0 => 1,
+            1 => 2,
+            _ => 0
+        };
+
+        return points > 0;
+    }
+
+    /// <summary>
+    /// 将效果范围格式化为 UI 上显示的带符号边界值。
+    /// </summary>
+    private static string FormatEffectRange(int minValue, int maxValue)
+    {
+        return minValue == maxValue
+            ? FormatSignedValue(minValue)
+            : $"{FormatSignedValue(minValue)}~{FormatSignedValue(maxValue)}";
+    }
+
+    /// <summary>
+    /// 格式化单个带符号效果值。
+    /// </summary>
+    private static string FormatSignedValue(int value)
+    {
+        return value.ToString("+0;-0;0");
+    }
+
+    /// <summary>
+    /// 获取当前流程黑板。
+    /// </summary>
+    private static bool TryGetCurrentBlackboard(out GameFlowBlackboard blackboard)
+    {
+        blackboard = null;
 
         GameFlowRunner runner = GameFlowRunner.Instance;
         if (runner == null || runner.Controller == null)
@@ -407,7 +547,7 @@ public sealed class FloatingUIManager : MonoBehaviour
             return false;
         }
 
-        remainingActionPoints = runner.Controller.Blackboard.RemainingActionPoints;
+        blackboard = runner.Controller.Blackboard;
         return true;
     }
 
@@ -596,15 +736,21 @@ public sealed class FloatingUIManager : MonoBehaviour
             return false;
         }
 
-        var track = actionPointType switch
+        return runner.Controller.Blackboard.HasRoomOperationCount(GetDevelopmentTrack(actionPointType));
+    }
+
+    /// <summary>
+    /// 将 Floating UI 的房间类型映射到 GameFlow 的开发轨道。
+    /// </summary>
+    private static GameDevelopmentTrack GetDevelopmentTrack(RoomActionPointType actionPointType)
+    {
+        return actionPointType switch
         {
             RoomActionPointType.Code => GameDevelopmentTrack.Program,
             RoomActionPointType.Art => GameDevelopmentTrack.Art,
             RoomActionPointType.Audio => GameDevelopmentTrack.Audio,
             _ => GameDevelopmentTrack.Audio
         };
-
-        return runner.Controller.Blackboard.HasRoomOperationCount(track);
     }
 
     /// <summary>
