@@ -43,6 +43,10 @@ namespace Anchor.Character.Attributes
     public sealed class CharacterAttributeSet
     {
         private readonly Dictionary<int, int> mValues = new();
+        /// <summary>
+        /// 需要强制保持非负的属性 ID，写入时会统一夹到 0 以上。
+        /// </summary>
+        private readonly HashSet<int> mNonNegativeAttributeIds = new();
 
         /// <summary>
         /// 当前属性集合的实例级变化通知。
@@ -76,10 +80,27 @@ namespace Anchor.Character.Attributes
         }
 
         /// <summary>
+        /// 将指定属性登记为非负属性，后续 Set/Add 写入都会自动避免小于 0。
+        /// </summary>
+        public void RequireNonNegative(int attributeId)
+        {
+            if (!mNonNegativeAttributeIds.Add(attributeId))
+            {
+                return;
+            }
+
+            if (mValues.TryGetValue(attributeId, out var value) && value < 0)
+            {
+                Set(attributeId, 0);
+            }
+        }
+
+        /// <summary>
         /// 设置指定属性值；数值实际变化时会触发通知。
         /// </summary>
         public void Set(int attributeId, int value)
         {
+            value = ClampValue(attributeId, value);
             var previousValue = Get(attributeId);
             if (previousValue.Equals(value))
             {
@@ -97,7 +118,7 @@ namespace Anchor.Character.Attributes
         {
             var value = Get(attributeId) + delta;
             Set(attributeId, value);
-            return value;
+            return Get(attributeId);
         }
 
         /// <summary>
@@ -139,6 +160,16 @@ namespace Anchor.Character.Attributes
             var changedEvent = new CharacterAttributeChangedEvent(this, attributeId, previousValue, currentValue);
             Changed?.Invoke(changedEvent);
             EventKit.Type.Send(changedEvent);
+        }
+
+        /// <summary>
+        /// 根据属性写入规则修正最终存储值。
+        /// </summary>
+        private int ClampValue(int attributeId, int value)
+        {
+            return mNonNegativeAttributeIds.Contains(attributeId)
+                ? Math.Max(0, value)
+                : value;
         }
     }
 }

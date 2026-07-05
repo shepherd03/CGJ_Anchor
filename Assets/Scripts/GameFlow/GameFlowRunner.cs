@@ -62,12 +62,13 @@ namespace Anchor.GameFlow
                 return;
             }
 
-            CreateController();
-
             if (mStartOnAwake)
             {
-                mController.StartNewGame();
+                StartNewGame();
+                return;
             }
+
+            CreateController();
         }
 
         /// <summary>
@@ -127,10 +128,13 @@ namespace Anchor.GameFlow
             return true;
         }
 
+        /// <summary>
+        /// 创建干净的流程控制器，并立即启动一局新游戏。
+        /// </summary>
         [ContextMenu("开始新游戏")]
         public void StartNewGame()
         {
-            EnsureController();
+            RecreateControllerForNewGame();
             mController.StartNewGame();
         }
 
@@ -198,7 +202,7 @@ namespace Anchor.GameFlow
         /// </summary>
         public void ResetCurrentGameFlowForBeginPanel()
         {
-            EnsureController();
+            RecreateControllerForNewGame();
             mController.StartNewGame();
             mController.Stop();
         }
@@ -287,6 +291,15 @@ namespace Anchor.GameFlow
                 mAutoAdvanceInteractiveStates,
                 GameConfigs.Tables.Tbbuff.DataList,
                 GameConfigs.Tables.TbgameEvent.DataList);
+        }
+
+        /// <summary>
+        /// 重开游戏前丢弃旧流程控制器，确保 Blackboard、事件队列和商店候选都从新实例开始。
+        /// </summary>
+        private void RecreateControllerForNewGame()
+        {
+            mController?.Stop();
+            CreateController();
         }
 
         private static void EnsureResKitProvider()

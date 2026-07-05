@@ -88,6 +88,7 @@ namespace Anchor.GameFlow
             mAttributeCatalog = attributeCatalog ?? throw new ArgumentNullException(nameof(attributeCatalog));
             mReadOnlyWeeklyWishlistModifiers = mWeeklyWishlistModifiers.AsReadOnly();
             RequireCoreAttributes();
+            ConfigureNonNegativePlayerAttributes();
         }
 
         public void ResetForNewRun(GameFlowSettings settings)
@@ -326,6 +327,18 @@ namespace Anchor.GameFlow
         private int GetInt(int attributeId)
         {
             return (int)PlayerAttributes.Get(attributeId);
+        }
+
+        /// <summary>
+        /// 登记核心玩家属性下限，防止事件、Buff、结算或测试入口把数值扣成负数。
+        /// </summary>
+        private void ConfigureNonNegativePlayerAttributes()
+        {
+            PlayerAttributes.RequireNonNegative(CharacterAttributeIds.Coins);
+            PlayerAttributes.RequireNonNegative(CharacterAttributeIds.Bug);
+            PlayerAttributes.RequireNonNegative(CharacterAttributeIds.Visual);
+            PlayerAttributes.RequireNonNegative(CharacterAttributeIds.Atmosphere);
+            PlayerAttributes.RequireNonNegative(CharacterAttributeIds.Wishlist);
         }
 
         private void AddWeeklyWishlistModifier(string sourceName, WishlistModifierKind kind, int value)

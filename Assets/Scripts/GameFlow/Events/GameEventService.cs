@@ -67,6 +67,18 @@ namespace Anchor.GameFlow.Events
         public bool HasPendingEvent => CurrentEvent != null;
         public int PendingEventCount => Math.Max(0, mCurrentWeekEvents.Count - mCurrentEventIndex);
 
+        /// <summary>
+        /// 清空新一局不该继承的事件抽取缓存。
+        /// </summary>
+        public void ResetForNewRun()
+        {
+            ClearCurrentWeekEvents();
+            mEligibleWeekEvents.Clear();
+        }
+
+        /// <summary>
+        /// 清空当前周待处理事件。
+        /// </summary>
         public void ClearCurrentWeekEvents()
         {
             mCurrentWeekEvents.Clear();

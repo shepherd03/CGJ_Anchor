@@ -37,6 +37,14 @@ namespace Anchor.GameFlow.Buffs
         public int CostAttributeId => mCostAttributeId;
         public IReadOnlyList<BuffRow> CurrentOffers => mReadOnlyCurrentOffers;
 
+        /// <summary>
+        /// 清空当前商店候选 Buff，避免新一局短暂读到上一局候选。
+        /// </summary>
+        public void ClearCurrentOffers()
+        {
+            mCurrentOffers.Clear();
+        }
+
         public IReadOnlyList<BuffRow> RefreshOffers(GameFlowBlackboard blackboard, int count)
         {
             if (blackboard == null)

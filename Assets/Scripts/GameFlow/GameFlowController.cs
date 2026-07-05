@@ -57,6 +57,9 @@ namespace Anchor.GameFlow
         public EventRow CurrentWeekGameEvent => GameEvents.CurrentEvent;
         public bool HasPendingWeekGameEvent => GameEvents.HasPendingEvent;
 
+        /// <summary>
+        /// 开始新一局流程，并清空不应跨局保留的服务缓存。
+        /// </summary>
         public void StartNewGame()
         {
             if (mFsm.MachineState != MachineState.End)
@@ -64,7 +67,7 @@ namespace Anchor.GameFlow
                 mFsm.End();
             }
 
-            GameEvents.ClearCurrentWeekEvents();
+            ResetRunScopedServices();
             mFsm.Start(GameFlowState.NewGame);
         }
 
@@ -249,6 +252,15 @@ namespace Anchor.GameFlow
         internal void NotifyBuffPurchased(BuffPurchaseResult result)
         {
             EventKit.Type.Send(new BuffPurchasedEvent(Blackboard, result));
+        }
+
+        /// <summary>
+        /// 清空事件、商店等运行时服务中的本局缓存。
+        /// </summary>
+        private void ResetRunScopedServices()
+        {
+            GameEvents.ResetForNewRun();
+            BuffShop.ClearCurrentOffers();
         }
     }
 }
