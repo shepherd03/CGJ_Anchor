@@ -159,13 +159,13 @@ namespace Anchor.UI.Panel
                 return;
             }
 
-            SetStatusText(goldText, "Gold", blackboard.Coins, lastGoldValue);
-            SetStatusText(bugText, "Bug", blackboard.BugScore, lastBugValue);
-            SetStatusText(viewText, "View", blackboard.VisualScore, lastViewValue);
-            SetStatusText(audioText, "Audio", blackboard.AtmosphereScore, lastAudioValue);
+            SetStatusText(goldText, "Gold:", blackboard.Coins, lastGoldValue);
+            SetStatusText(bugText, "Bug:", blackboard.BugScore, lastBugValue);
+            SetStatusText(viewText, "View:", blackboard.VisualScore, lastViewValue);
+            SetStatusText(audioText, "Audio:", blackboard.AtmosphereScore, lastAudioValue);
             SetActionPointContainer(blackboard.RemainingActionPoints);
-            SetStatusText(wishlistText, "Wishlist", blackboard.WishlistCount, lastWishlistValue);
-            SetStatusText(qualityText, "Quality", blackboard.QualityScore, lastQualityValue);
+            SetStatusText(wishlistText, "", blackboard.WishlistCount, lastWishlistValue);
+            SetStatusText(qualityText, "Quality:", blackboard.QualityScore, lastQualityValue);
             CacheStatusSnapshot(blackboard);
         }
 
@@ -309,7 +309,7 @@ namespace Anchor.UI.Panel
                     return;
                 }
 
-                SetText(text, $"{label}: {currentValue}");
+                SetText(text, $"{label} {currentValue}");
                 return;
             }
 
