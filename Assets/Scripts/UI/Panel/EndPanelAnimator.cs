@@ -46,11 +46,18 @@ namespace Anchor.UI.Panel
 
         [Header("Ending Artwork Targets")]
         [SerializeField] private Image resultImage;
+        // Result 子物体 Bg 的图片组件，用于按结局替换背景图。
+        [SerializeField, Tooltip("Result 子物体 Bg 的 Image，用来承接 Result Bg Slots 中对应结局的图片。")]
+        private Image resultBgImage;
         [SerializeField] private Image idleImage;
 
         [Header("Result Artwork Slots (0 Hit, 1 Boutique, 2 Buggy, 3 Storm)")]
         [SerializeField, Tooltip("Slot 0=hit 好评如潮；Slot 1=boutique 小众精品；Slot 2=buggy 无人问津；Slot 3=storm 暴死结局。")]
         private Sprite[] resultSprites = new Sprite[EndingSlotCount];
+
+        [Header("Result Bg Slots (0 Hit, 1 Boutique, 2 Buggy, 3 Storm)")]
+        [SerializeField, Tooltip("顺序与 Result Artwork Slots 一致，会设置到 Result 子物体 Bg 的 Image 上。")]
+        private Sprite[] resultBgSprites = new Sprite[EndingSlotCount];
 
         [Header("Idle Artwork Slots (0 Hit, 1 Boutique, 2 Buggy, 3 Storm)")]
         [SerializeField, Tooltip("Slot 0=hit 好评如潮；Slot 1=boutique 小众精品；Slot 2=buggy 无人问津；Slot 3=storm 暴死结局。")]
@@ -183,10 +190,14 @@ namespace Anchor.UI.Panel
                 endingId);
         }
 
+        /// <summary>
+        /// 根据结局 id 切换 Result、Result/Bg 和 Idle 的图片。
+        /// </summary>
         public void ApplyEndingArtwork(string endingId)
         {
             int slot = GetEndingSlot(endingId);
             ApplySprite(resultImage, resultSprites, slot);
+            ApplySprite(resultBgImage, resultBgSprites, slot);
             ApplySprite(idleImage, idleSprites, slot);
         }
 
@@ -222,6 +233,7 @@ namespace Anchor.UI.Panel
             wishlistNumber = group5.childCount > 0 ? group5.GetChild(0).GetComponent<TMP_Text>() : null;
             resultImage = resultImage != null ? resultImage : transform.Find("Result")?.GetComponent<Image>();
             idleImage = idleImage != null ? idleImage : transform.Find("Idle")?.GetComponent<Image>();
+            resultBgImage = resultBgImage != null ? resultBgImage : FindResultBgImage();
 
             if (Array.Exists(scoreNumbers, number => number == null) ||
                 wishlistNumber == null || resultImage == null || idleImage == null)
@@ -435,6 +447,24 @@ namespace Anchor.UI.Panel
             return blackboard != null;
         }
 
+        /// <summary>
+        /// 查找 Result 子物体 Bg 上的 Image；缺失时不阻断主结局图逻辑。
+        /// </summary>
+        private Image FindResultBgImage()
+        {
+            Transform bgTransform = resultImage != null
+                ? resultImage.transform.Find("Bg")
+                : transform.Find("Result/Bg");
+            Image bgImage = bgTransform != null ? bgTransform.GetComponent<Image>() : null;
+
+            if (bgImage == null)
+            {
+                Debug.LogWarning($"{nameof(EndPanelAnimator)} cannot find Result/Bg Image.", this);
+            }
+
+            return bgImage;
+        }
+
         private static int GetEndingSlot(string endingId)
         {
             switch (endingId)
@@ -546,6 +576,7 @@ namespace Anchor.UI.Panel
         private void OnValidate()
         {
             ResizeSlots(ref resultSprites);
+            ResizeSlots(ref resultBgSprites);
             ResizeSlots(ref idleSprites);
         }
 

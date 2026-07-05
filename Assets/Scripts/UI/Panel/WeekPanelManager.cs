@@ -57,6 +57,12 @@ namespace Anchor.UI.Panel
         [SerializeField, Min(0f), Tooltip("Loading 过渡面板显示时长，单位秒。")]
         private float loadingDuration = 2f;
 
+        [SerializeField, Min(0f), Tooltip("Loading 过渡面板淡入时长，单位秒。会被压缩进显示总时长内。")]
+        private float loadingFadeInDuration = 0.25f;
+
+        [SerializeField, Min(0f), Tooltip("Loading 过渡面板淡出时长，单位秒。会被压缩进显示总时长内。")]
+        private float loadingFadeOutDuration = 0.25f;
+
         // 当前 WeekPanel 关闭后要交还给流程编排器执行的回调。
         private Action onClosed;
         // SumPanel 动画完成前禁用关闭按钮，避免玩家跳过结算展示。
@@ -67,6 +73,8 @@ namespace Anchor.UI.Panel
         private Tween closeButtonPopupTween;
         // 运行时生成的 Loading 覆盖层实例。
         private GameObject loadingTransitionInstance;
+        // 运行时 Loading 顶层 Canvas 的透明度控制。
+        private CanvasGroup loadingTransitionCanvasGroup;
         private Vector3 authoredScale;
         private Vector3 closeButtonAuthoredScale = Vector3.one;
         private TMP_Text closeButtonTmpLabel;
@@ -175,13 +183,17 @@ namespace Anchor.UI.Panel
         /// </summary>
         private IEnumerator CloseAndNotifyRoutine()
         {
-            CreateLoadingTransitionPanel();
+            CanvasGroup loadingGroup = CreateLoadingTransitionPanel();
+            GetLoadingTransitionTiming(out float fadeInDuration, out float holdDuration, out float fadeOutDuration);
 
-            if (loadingDuration > 0f)
+            yield return FadeLoadingTransition(loadingGroup, 1f, fadeInDuration);
+
+            if (holdDuration > 0f)
             {
-                yield return new WaitForSecondsRealtime(loadingDuration);
+                yield return new WaitForSecondsRealtime(holdDuration);
             }
 
+            yield return FadeLoadingTransition(loadingGroup, 0f, fadeOutDuration);
             DestroyLoadingTransitionPanel();
             closeRoutine = null;
             PlayCloseAnimationAndNotify();
@@ -217,27 +229,31 @@ namespace Anchor.UI.Panel
         /// 原注释 --- 过期：只挂到当前 Canvas 下仍可能被更高排序的 Canvas 盖住。
         /// 从 Resources 动态创建 Loading 过渡面板，并挂到运行时顶层 Canvas。
         /// </summary>
-        private void CreateLoadingTransitionPanel()
+        private CanvasGroup CreateLoadingTransitionPanel()
         {
             DestroyLoadingTransitionPanel();
 
             if (string.IsNullOrWhiteSpace(loadingResourcePath))
             {
                 Debug.LogWarning($"{nameof(WeekPanelManager)} needs a Resources path for the loading transition prefab.", this);
-                return;
+                return null;
             }
 
             GameObject loadingPrefab = Resources.Load<GameObject>(loadingResourcePath);
             if (loadingPrefab == null)
             {
                 Debug.LogWarning($"{nameof(WeekPanelManager)} cannot load Resources/{loadingResourcePath}.prefab.", this);
-                return;
+                return null;
             }
 
             loadingTransitionInstance = CreateLoadingTransitionCanvas();
+            loadingTransitionCanvasGroup = loadingTransitionInstance.GetComponent<CanvasGroup>();
+            loadingTransitionCanvasGroup.alpha = 0f;
             GameObject loadingPanel = Instantiate(loadingPrefab, loadingTransitionInstance.transform, false);
             loadingPanel.name = loadingPrefab.name;
             StretchLoadingTransitionPanel(loadingPanel);
+            RefreshLoadingTransitionWeekText(loadingPanel);
+            return loadingTransitionCanvasGroup;
         }
 
         /// <summary>
@@ -250,6 +266,8 @@ namespace Anchor.UI.Panel
                 return;
             }
 
+            loadingTransitionCanvasGroup?.DOKill();
+            loadingTransitionCanvasGroup = null;
             Destroy(loadingTransitionInstance);
             loadingTransitionInstance = null;
         }
@@ -259,14 +277,79 @@ namespace Anchor.UI.Panel
         /// </summary>
         private GameObject CreateLoadingTransitionCanvas()
         {
-            var canvasObject = new GameObject("LoadingTransitionCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            var canvasObject = new GameObject(
+                "LoadingTransitionCanvas",
+                typeof(RectTransform),
+                typeof(Canvas),
+                typeof(CanvasScaler),
+                typeof(GraphicRaycaster),
+                typeof(CanvasGroup));
             Canvas canvas = canvasObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.overrideSorting = true;
             canvas.sortingOrder = LoadingTransitionSortingOrder;
 
+            CanvasGroup canvasGroup = canvasObject.GetComponent<CanvasGroup>();
+            canvasGroup.alpha = 0f;
+            canvasGroup.interactable = true;
+            canvasGroup.blocksRaycasts = true;
+
             CopyCanvasScalerSettings(canvasObject.GetComponent<CanvasScaler>());
             return canvasObject;
+        }
+
+        /// <summary>
+        /// 计算 Loading 淡入、停留、淡出时间，保证三段总时长不超过 loadingDuration。
+        /// </summary>
+        private void GetLoadingTransitionTiming(out float fadeInDuration, out float holdDuration, out float fadeOutDuration)
+        {
+            float totalDuration = Mathf.Max(0f, loadingDuration);
+            fadeInDuration = Mathf.Max(0f, loadingFadeInDuration);
+            fadeOutDuration = Mathf.Max(0f, loadingFadeOutDuration);
+
+            if (totalDuration <= 0f)
+            {
+                fadeInDuration = 0f;
+                holdDuration = 0f;
+                fadeOutDuration = 0f;
+                return;
+            }
+
+            float totalFadeDuration = fadeInDuration + fadeOutDuration;
+            if (totalFadeDuration > totalDuration && totalFadeDuration > 0f)
+            {
+                float scale = totalDuration / totalFadeDuration;
+                fadeInDuration *= scale;
+                fadeOutDuration *= scale;
+            }
+
+            holdDuration = Mathf.Max(0f, totalDuration - fadeInDuration - fadeOutDuration);
+        }
+
+        /// <summary>
+        /// 淡入或淡出 Loading 顶层 Canvas。
+        /// </summary>
+        private IEnumerator FadeLoadingTransition(CanvasGroup canvasGroup, float targetAlpha, float duration)
+        {
+            if (canvasGroup == null)
+            {
+                yield break;
+            }
+
+            canvasGroup.DOKill();
+            if (duration <= 0f)
+            {
+                canvasGroup.alpha = targetAlpha;
+                yield break;
+            }
+
+            Ease fadeEase = targetAlpha > canvasGroup.alpha ? Ease.OutQuad : Ease.InQuad;
+            Tween fadeTween = canvasGroup
+                .DOFade(targetAlpha, duration)
+                .SetEase(fadeEase)
+                .SetUpdate(true)
+                .SetTarget(this);
+            yield return fadeTween.WaitForCompletion();
         }
 
         /// <summary>
@@ -315,6 +398,36 @@ namespace Anchor.UI.Panel
             rectTransform.offsetMax = Vector2.zero;
             rectTransform.localScale = Vector3.one;
             rectTransform.localRotation = Quaternion.identity;
+        }
+
+        /// <summary>
+        /// 刷新 Loading 预制体下的周数文本，显示即将进入的总周数。
+        /// </summary>
+        private void RefreshLoadingTransitionWeekText(GameObject loadingPanel)
+        {
+            TextMeshProUGUI weekText = loadingPanel != null
+                ? loadingPanel.GetComponentInChildren<TextMeshProUGUI>(true)
+                : null;
+            if (weekText == null)
+            {
+                Debug.LogWarning($"{nameof(WeekPanelManager)} cannot find a TextMeshProUGUI under the loading prefab.", this);
+                return;
+            }
+
+            weekText.text = $"第 {GetUpcomingLoadingWeekNumber()} 周";
+        }
+
+        /// <summary>
+        /// 获取 Loading 过渡面板应该展示的下一周总周数。
+        /// </summary>
+        private static int GetUpcomingLoadingWeekNumber()
+        {
+            if (!TryGetCurrentBlackboard(out GameFlowBlackboard blackboard))
+            {
+                return 1;
+            }
+
+            return Mathf.Max(1, blackboard.TotalWeekIndex + 1);
         }
 
         /// <summary>
