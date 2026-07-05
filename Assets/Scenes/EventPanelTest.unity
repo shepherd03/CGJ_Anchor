@@ -708,9 +708,15 @@ MonoBehaviour:
   bugText: {fileID: 1756400173}
   viewText: {fileID: 117859748}
   audioText: {fileID: 689813596}
-  actionPointText: {fileID: 507445929}
+  actionPointContainer: {fileID: 0}
   wishlistText: {fileID: 0}
   qualityText: {fileID: 0}
+  statusChangeScaleDuration: 0.12
+  statusChangeRestoreDuration: 0.18
+  statusIncreaseScale: 1.18
+  statusDecreaseScale: 0.88
+  statusIncreaseColor: {r: 0, g: 1, b: 0, a: 1}
+  statusDecreaseColor: {r: 1, g: 0, b: 0, a: 1}
   nextWeekButton: {fileID: 12819897}
 --- !u!1 &322385679
 GameObject:
@@ -1068,7 +1074,7 @@ Transform:
   m_GameObject: {fileID: 519420028}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -7.6416163, y: -2.7830923, z: -10.022238}
+  m_LocalPosition: {x: -7.641616, y: -2.7830923, z: -10.022238}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2833,7 +2839,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7c9da25818af4c30b4c9d1c287d6a60, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  bugText: {fileID: 0}
+  viewText: {fileID: 0}
+  audioText: {fileID: 0}
+  wishlistText: {fileID: 0}
   closeButton: {fileID: 2032365047}
+  closeButtonTextOptions:
+  - "\u7EE7\u7EED"
+  - "\u4E0B\u4E00\u5468"
+  - "\u5B8C\u6210"
+  closeButtonPopupStartScale: 0.65
+  closeButtonPopupDuration: 0.28
+  closeButtonPopupEase: 27
+  wishlistCollectionEffect: {fileID: 0}
+  closeOvershootScale: 1.05
+  closeExpandDuration: 0.12
+  closeShrinkDuration: 0.24
+  closeExpandEase: 6
+  closeShrinkEase: 26
 --- !u!1 &1494136285
 GameObject:
   m_ObjectHideFlags: 0
@@ -3370,7 +3393,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 2224244231838995624, guid: 8d748543a8a4a4ce197e2e863e4cf929, type: 3}
   m_PrefabInstance: {fileID: 4660911803641929745}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1711686136}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 33165e461e56dcd4e821eb2856a9dcb3, type: 3}
@@ -3381,7 +3404,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 7798692836994123667, guid: 8d748543a8a4a4ce197e2e863e4cf929, type: 3}
   m_PrefabInstance: {fileID: 4660911803641929745}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1711686136}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8da8135e58ae4fe45aecde35b147462a, type: 3}
@@ -3479,6 +3502,7 @@ MonoBehaviour:
   manageButtonInteractable: 1
   disableActiveButton: 1
   activeButtonReturnsToDefaultCamera: 1
+  blockOtherButtonsWhileInteractionActive: 1
 --- !u!1 &1756400171
 GameObject:
   m_ObjectHideFlags: 0
@@ -4593,6 +4617,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 685587468}
     m_Modifications:
+    - target: {fileID: 880000000000000002, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.657681
+      objectReference: {fileID: 0}
+    - target: {fileID: 880000000000000002, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -38
+      objectReference: {fileID: 0}
+    - target: {fileID: 880000000000000004, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: df47f5a587b07da479ab66040266ffc5, type: 3}
     - target: {fileID: 2975336608072481967, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -4681,6 +4717,22 @@ PrefabInstance:
       propertyPath: m_fontMaterial
       value: 
       objectReference: {fileID: 1912603034}
+    - target: {fileID: 6720199877247011947, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
+      propertyPath: panelBackgrounds.Array.data[0]
+      value: 
+      objectReference: {fileID: 21300000, guid: 102f347083ae814489ed39c979908474, type: 3}
+    - target: {fileID: 6720199877247011947, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
+      propertyPath: panelBackgrounds.Array.data[1]
+      value: 
+      objectReference: {fileID: 21300000, guid: df47f5a587b07da479ab66040266ffc5, type: 3}
+    - target: {fileID: 6720199877247011947, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
+      propertyPath: panelBackgrounds.Array.data[2]
+      value: 
+      objectReference: {fileID: 21300000, guid: 086697ffce728ca46918d834f70c6e18, type: 3}
+    - target: {fileID: 6720199877247011947, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
+      propertyPath: panelBackgrounds.Array.data[3]
+      value: 
+      objectReference: {fileID: 21300000, guid: de61be82feaa79141bf3ae130c18613c, type: 3}
     - target: {fileID: 8395848474047795865, guid: 3a83a082f7e7b4e4e8d522f1f10f077f, type: 3}
       propertyPath: m_fontMaterial
       value: 

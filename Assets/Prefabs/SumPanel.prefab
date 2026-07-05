@@ -1090,7 +1090,7 @@ MonoBehaviour:
   - "\u611F\u89C9..\u4E0D\u5982\u5143\u795E"
   - "\u5E72\u5C31\u5B8C\u4E86\uFF01"
   - "\u518D\u63A5\u518D\u5389\uFF01"
-  - "\u51B2\u51B2\u51B2\uFF01"
+  - "\u4E43\u9F99\u89C9\u5F97\u5F88\u8D5E"
   - "\u62FF\u4E0B\uFF01"
   closeButtonPopupStartScale: 0.65
   closeButtonPopupDuration: 0.28
@@ -1130,11 +1130,11 @@ MonoBehaviour:
   numberEase: 9
   useUnscaledTime: 1
   audioSource: {fileID: 0}
-  panelOpenSound: {fileID: 8300000, guid: 4ea12db1aec8f664d9f87a33655a49ce, type: 3}
+  panelOpenSound: {fileID: 8300000, guid: 7bd37202ea4dc444b977a30ee40afb21, type: 3}
   panelOpenSoundVolume: 1
   group6EnterSound: {fileID: 8300000, guid: 5df0556c45610e84c8c658f67285a83e, type: 3}
   group6EnterSoundVolume: 1
-  valueUpdateSound: {fileID: 8300000, guid: ba00a44b8e75add438ed32165935967d, type: 3}
+  valueUpdateSound: {fileID: 8300000, guid: 9ca27012bb33b6347b852af1b3a92411, type: 3}
   valueUpdateSoundVolume: 1
   group4TargetValue: 88
   group5TargetValue: 88888

@@ -6239,6 +6239,19 @@ MonoBehaviour:
   audioText: {fileID: 0}
   wishlistText: {fileID: 0}
   closeButton: {fileID: 2032365047}
+  closeButtonTextOptions:
+  - "\u7EE7\u7EED"
+  - "\u4E0B\u4E00\u5468"
+  - "\u5B8C\u6210"
+  closeButtonPopupStartScale: 0.65
+  closeButtonPopupDuration: 0.28
+  closeButtonPopupEase: 27
+  wishlistCollectionEffect: {fileID: 0}
+  closeOvershootScale: 1.05
+  closeExpandDuration: 0.12
+  closeShrinkDuration: 0.24
+  closeExpandEase: 6
+  closeShrinkEase: 26
 --- !u!1 &1494136285
 GameObject:
   m_ObjectHideFlags: 0
@@ -7918,6 +7931,7 @@ MonoBehaviour:
   manageButtonInteractable: 1
   disableActiveButton: 1
   activeButtonReturnsToDefaultCamera: 1
+  blockOtherButtonsWhileInteractionActive: 1
 --- !u!1 &1724785276
 GameObject:
   m_ObjectHideFlags: 0

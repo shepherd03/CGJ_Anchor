@@ -17,6 +17,8 @@ namespace Anchor.UI.Panel
         [Header("Panel")]
         [SerializeField] private RectTransform panelRoot;
         [SerializeField] private CanvasGroup canvasGroup;
+        [SerializeField] private Image sourceImage;
+        [SerializeField] private Sprite[] panelBackgrounds = new Sprite[4];
         [SerializeField] private RectTransform idle;
         [SerializeField] private Sprite[] idleSprites;
 
@@ -159,6 +161,7 @@ namespace Anchor.UI.Panel
             KillAnimation();
             StopTypewriter();
             Populate(eventRow);
+            RandomizePanelBackground();
             RandomizeIdleSprite();
 
             isVisible = true;
@@ -311,6 +314,47 @@ namespace Anchor.UI.Panel
         }
 
         /// <summary>
+        /// 每次打开事件面板时，从四个背景插槽中随机选择一张有效图片。
+        /// </summary>
+        private void RandomizePanelBackground()
+        {
+            if (sourceImage == null || panelBackgrounds == null)
+            {
+                return;
+            }
+
+            int validCount = 0;
+            for (int i = 0; i < panelBackgrounds.Length; i++)
+            {
+                if (panelBackgrounds[i] != null)
+                {
+                    validCount++;
+                }
+            }
+
+            if (validCount == 0)
+            {
+                return;
+            }
+
+            int selectedIndex = UnityEngine.Random.Range(0, validCount);
+            for (int i = 0; i < panelBackgrounds.Length; i++)
+            {
+                Sprite background = panelBackgrounds[i];
+                if (background == null)
+                {
+                    continue;
+                }
+
+                if (selectedIndex-- == 0)
+                {
+                    sourceImage.sprite = background;
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
         /// 启动正文打字机效果。
         /// </summary>
         private void StartTypewriter(string content)
@@ -428,6 +472,8 @@ namespace Anchor.UI.Panel
                 panelRoot = transform as RectTransform;
             if (canvasGroup == null)
                 canvasGroup = GetComponent<CanvasGroup>();
+            if (sourceImage == null)
+                sourceImage = transform.Find("Background")?.GetComponent<Image>();
             if (idle == null)
                 idle = transform.Find("Idle") as RectTransform;
             if (eventName == null)
@@ -562,6 +608,11 @@ namespace Anchor.UI.Panel
         /// </summary>
         private void OnValidate()
         {
+            if (panelBackgrounds == null || panelBackgrounds.Length != 4)
+            {
+                Array.Resize(ref panelBackgrounds, 4);
+            }
+
             popupDuration = Mathf.Max(0.01f, popupDuration);
             popupStartScale = Mathf.Clamp(popupStartScale, 0.1f, 1f);
             idleSlideDuration = Mathf.Max(0.01f, idleSlideDuration);
