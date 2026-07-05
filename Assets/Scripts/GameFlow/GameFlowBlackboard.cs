@@ -193,6 +193,63 @@ namespace Anchor.GameFlow
             return GetRoomOperationCount(track) > 0;
         }
 
+        /// <summary>
+        /// 获取指定房间行动点数会实际应用的核心属性变化范围，用于 UI 预览点击后的效果边界。
+        /// </summary>
+        public bool TryGetRoomActionEffectRange(GameDevelopmentTrack track, int points, out int minValue, out int maxValue)
+        {
+            minValue = 0;
+            maxValue = 0;
+
+            points = Math.Max(0, points);
+            if (points != 1 && points != 2)
+            {
+                return false;
+            }
+
+            switch (track)
+            {
+                case GameDevelopmentTrack.Program:
+                    GetRoomActionEffectRange(
+                        BugScore,
+                        points,
+                        CharacterAttributeIds.ProgramOneActionBugDeltaMin,
+                        CharacterAttributeIds.ProgramOneActionBugDeltaMax,
+                        CharacterAttributeIds.ProgramTwoActionBugDeltaMin,
+                        CharacterAttributeIds.ProgramTwoActionBugDeltaMax,
+                        WeeklyProgramActionBugDelta,
+                        out minValue,
+                        out maxValue);
+                    return true;
+                case GameDevelopmentTrack.Art:
+                    GetRoomActionEffectRange(
+                        VisualScore,
+                        points,
+                        CharacterAttributeIds.ArtOneActionVisualDeltaMin,
+                        CharacterAttributeIds.ArtOneActionVisualDeltaMax,
+                        CharacterAttributeIds.ArtTwoActionVisualDeltaMin,
+                        CharacterAttributeIds.ArtTwoActionVisualDeltaMax,
+                        WeeklyArtActionVisualDelta,
+                        out minValue,
+                        out maxValue);
+                    return true;
+                case GameDevelopmentTrack.Audio:
+                    GetRoomActionEffectRange(
+                        AtmosphereScore,
+                        points,
+                        CharacterAttributeIds.AudioOneActionAtmosphereDeltaMin,
+                        CharacterAttributeIds.AudioOneActionAtmosphereDeltaMax,
+                        CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMin,
+                        CharacterAttributeIds.AudioTwoActionAtmosphereDeltaMax,
+                        WeeklyAudioActionAtmosphereDelta,
+                        out minValue,
+                        out maxValue);
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         public void ApplyWeekResult(WeekResolveResult result)
         {
             LastWeekResult = result;
@@ -485,6 +542,51 @@ namespace Anchor.GameFlow
             return points == 1
                 ? GetRandomInclusive(GetInt(onePointMinId), GetInt(onePointMaxId))
                 : GetRandomInclusive(GetInt(twoPointMinId), GetInt(twoPointMaxId));
+        }
+
+        /// <summary>
+        /// 按实际房间行动规则计算随机区间和本周临时加成叠加后的最终变化范围。
+        /// </summary>
+        private void GetRoomActionEffectRange(
+            int currentValue,
+            int points,
+            int onePointMinId,
+            int onePointMaxId,
+            int twoPointMinId,
+            int twoPointMaxId,
+            int weeklyDeltaPerPoint,
+            out int minValue,
+            out int maxValue)
+        {
+            int rawMin;
+            int rawMax;
+            if (points == 1)
+            {
+                rawMin = GetInt(onePointMinId);
+                rawMax = GetInt(onePointMaxId);
+            }
+            else
+            {
+                rawMin = GetInt(twoPointMinId);
+                rawMax = GetInt(twoPointMaxId);
+            }
+
+            if (rawMin > rawMax)
+            {
+                (rawMin, rawMax) = (rawMax, rawMin);
+            }
+
+            int weeklyDelta = weeklyDeltaPerPoint * points;
+            minValue = ClampDeltaForNonNegativeResult(currentValue, rawMin + weeklyDelta);
+            maxValue = ClampDeltaForNonNegativeResult(currentValue, rawMax + weeklyDelta);
+        }
+
+        /// <summary>
+        /// 核心房间属性不能小于 0，预览值要和实际写入后的变化一致。
+        /// </summary>
+        private static int ClampDeltaForNonNegativeResult(int currentValue, int delta)
+        {
+            return Math.Max(-Math.Max(0, currentValue), delta);
         }
 
         private void AddRoomWishlistReward(GameDevelopmentTrack track, int points, int onePointReward, int twoPointReward, int perPointReward)
