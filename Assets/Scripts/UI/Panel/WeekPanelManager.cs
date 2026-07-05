@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Anchor.GameFlow;
 using Anchor.UI;
 using DG.Tweening;
@@ -11,6 +12,9 @@ namespace Anchor.UI.Panel
     [DisallowMultipleComponent]
     public sealed class WeekPanelManager : PanelManagerSingleton<WeekPanelManager>
     {
+        // 运行时 Loading 使用独立 Canvas 的最高排序，避免被其他 UI Canvas 盖住。
+        private const int LoadingTransitionSortingOrder = 32767;
+
         [Header("Status Text")]
         [SerializeField, Tooltip("显示 Bug 数值的 TextMeshProUGUI。")]
         private TextMeshProUGUI bugText;
@@ -46,12 +50,23 @@ namespace Anchor.UI.Panel
         [SerializeField] private Ease closeExpandEase = Ease.OutQuad;
         [SerializeField] private Ease closeShrinkEase = Ease.InBack;
 
+        [Header("Loading Transition")]
+        [SerializeField, Tooltip("WeekPanel 关闭时从 Resources 加载的过渡面板路径。预制体放在 Assets/Resources/Loading.prefab 时填 Loading。")]
+        private string loadingResourcePath = "Loading";
+
+        [SerializeField, Min(0f), Tooltip("Loading 过渡面板显示时长，单位秒。")]
+        private float loadingDuration = 2f;
+
         // 当前 WeekPanel 关闭后要交还给流程编排器执行的回调。
         private Action onClosed;
         // SumPanel 动画完成前禁用关闭按钮，避免玩家跳过结算展示。
         private global::SumPanelTestAnimator sumPanelAnimator;
+        // 关闭前 Loading 过渡协程，避免重复点击开启多段等待。
+        private Coroutine closeRoutine;
         private Sequence closeSequence;
         private Tween closeButtonPopupTween;
+        // 运行时生成的 Loading 覆盖层实例。
+        private GameObject loadingTransitionInstance;
         private Vector3 authoredScale;
         private Vector3 closeButtonAuthoredScale = Vector3.one;
         private TMP_Text closeButtonTmpLabel;
@@ -93,6 +108,8 @@ namespace Anchor.UI.Panel
         {
             UnregisterAnimationCompletion();
             UnregisterCloseButtonClick();
+            StopCloseRoutine();
+            DestroyLoadingTransitionPanel();
             KillCloseAnimation();
             KillCloseButtonPopup();
         }
@@ -128,6 +145,8 @@ namespace Anchor.UI.Panel
         /// </summary>
         public void Close()
         {
+            StopCloseRoutine();
+            DestroyLoadingTransitionPanel();
             KillCloseAnimation();
             onClosed = null;
             gameObject.SetActive(false);
@@ -135,6 +154,8 @@ namespace Anchor.UI.Panel
 
         /// <summary>
         /// 关闭 WeekPanel，并触发本次打开时注入的关闭回调。
+        /// 原注释 --- 过期：关闭前需要先展示 Resources/Loading 过渡面板。
+        /// 生成 Loading 过渡面板，等待后关闭 WeekPanel，并触发本次打开时注入的关闭回调。
         /// </summary>
         private void CloseAndNotify()
         {
@@ -146,6 +167,31 @@ namespace Anchor.UI.Panel
             isClosing = true;
             SetCloseButtonInteractable(false);
             KillCloseButtonPopup();
+            closeRoutine = StartCoroutine(CloseAndNotifyRoutine());
+        }
+
+        /// <summary>
+        /// 等待 Loading 过渡结束后继续执行原有关闭动画。
+        /// </summary>
+        private IEnumerator CloseAndNotifyRoutine()
+        {
+            CreateLoadingTransitionPanel();
+
+            if (loadingDuration > 0f)
+            {
+                yield return new WaitForSecondsRealtime(loadingDuration);
+            }
+
+            DestroyLoadingTransitionPanel();
+            closeRoutine = null;
+            PlayCloseAnimationAndNotify();
+        }
+
+        /// <summary>
+        /// 播放 WeekPanel 关闭动画，动画完成后关闭面板并通知流程继续。
+        /// </summary>
+        private void PlayCloseAnimationAndNotify()
+        {
             closeSequence?.Kill();
             closeSequence = DOTween.Sequence()
                 .SetTarget(this)
@@ -164,6 +210,111 @@ namespace Anchor.UI.Panel
                 gameObject.SetActive(false);
                 NotifyClosed();
             });
+        }
+
+        /// <summary>
+        /// 从 Resources 动态创建 Loading 过渡面板，并挂到当前 Canvas 最上层。
+        /// 原注释 --- 过期：只挂到当前 Canvas 下仍可能被更高排序的 Canvas 盖住。
+        /// 从 Resources 动态创建 Loading 过渡面板，并挂到运行时顶层 Canvas。
+        /// </summary>
+        private void CreateLoadingTransitionPanel()
+        {
+            DestroyLoadingTransitionPanel();
+
+            if (string.IsNullOrWhiteSpace(loadingResourcePath))
+            {
+                Debug.LogWarning($"{nameof(WeekPanelManager)} needs a Resources path for the loading transition prefab.", this);
+                return;
+            }
+
+            GameObject loadingPrefab = Resources.Load<GameObject>(loadingResourcePath);
+            if (loadingPrefab == null)
+            {
+                Debug.LogWarning($"{nameof(WeekPanelManager)} cannot load Resources/{loadingResourcePath}.prefab.", this);
+                return;
+            }
+
+            loadingTransitionInstance = CreateLoadingTransitionCanvas();
+            GameObject loadingPanel = Instantiate(loadingPrefab, loadingTransitionInstance.transform, false);
+            loadingPanel.name = loadingPrefab.name;
+            StretchLoadingTransitionPanel(loadingPanel);
+        }
+
+        /// <summary>
+        /// 销毁运行时生成的 Loading 过渡面板。
+        /// </summary>
+        private void DestroyLoadingTransitionPanel()
+        {
+            if (loadingTransitionInstance == null)
+            {
+                return;
+            }
+
+            Destroy(loadingTransitionInstance);
+            loadingTransitionInstance = null;
+        }
+
+        /// <summary>
+        /// 创建独立的顶层 Canvas，保证 Loading 面板盖在所有普通 UI 之上。
+        /// </summary>
+        private GameObject CreateLoadingTransitionCanvas()
+        {
+            var canvasObject = new GameObject("LoadingTransitionCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            Canvas canvas = canvasObject.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = LoadingTransitionSortingOrder;
+
+            CopyCanvasScalerSettings(canvasObject.GetComponent<CanvasScaler>());
+            return canvasObject;
+        }
+
+        /// <summary>
+        /// 复制当前 UI 的 CanvasScaler 设置，避免独立 Loading Canvas 和原 UI 缩放不一致。
+        /// </summary>
+        private void CopyCanvasScalerSettings(CanvasScaler targetScaler)
+        {
+            CanvasScaler sourceScaler = GetComponentInParent<CanvasScaler>();
+            if (sourceScaler == null || targetScaler == null)
+            {
+                return;
+            }
+
+            targetScaler.uiScaleMode = sourceScaler.uiScaleMode;
+            targetScaler.referencePixelsPerUnit = sourceScaler.referencePixelsPerUnit;
+            targetScaler.scaleFactor = sourceScaler.scaleFactor;
+            targetScaler.referenceResolution = sourceScaler.referenceResolution;
+            targetScaler.screenMatchMode = sourceScaler.screenMatchMode;
+            targetScaler.matchWidthOrHeight = sourceScaler.matchWidthOrHeight;
+            targetScaler.physicalUnit = sourceScaler.physicalUnit;
+            targetScaler.fallbackScreenDPI = sourceScaler.fallbackScreenDPI;
+            targetScaler.defaultSpriteDPI = sourceScaler.defaultSpriteDPI;
+            targetScaler.dynamicPixelsPerUnit = sourceScaler.dynamicPixelsPerUnit;
+        }
+
+        /// <summary>
+        /// 将 Loading UI 拉伸到顶层 Canvas 的全屏范围，并放到最上层。
+        /// </summary>
+        private static void StretchLoadingTransitionPanel(GameObject panel)
+        {
+            if (panel == null)
+            {
+                return;
+            }
+
+            panel.transform.SetAsLastSibling();
+            RectTransform rectTransform = panel.transform as RectTransform;
+            if (rectTransform == null)
+            {
+                return;
+            }
+
+            rectTransform.anchorMin = Vector2.zero;
+            rectTransform.anchorMax = Vector2.one;
+            rectTransform.offsetMin = Vector2.zero;
+            rectTransform.offsetMax = Vector2.zero;
+            rectTransform.localScale = Vector3.one;
+            rectTransform.localRotation = Quaternion.identity;
         }
 
         /// <summary>
@@ -419,6 +570,20 @@ namespace Anchor.UI.Panel
             {
                 closeButton.interactable = interactable;
             }
+        }
+
+        /// <summary>
+        /// 停止关闭前的 Loading 等待协程，避免面板被外部关闭后继续推进流程。
+        /// </summary>
+        private void StopCloseRoutine()
+        {
+            if (closeRoutine == null)
+            {
+                return;
+            }
+
+            StopCoroutine(closeRoutine);
+            closeRoutine = null;
         }
 
         private void KillCloseAnimation()
