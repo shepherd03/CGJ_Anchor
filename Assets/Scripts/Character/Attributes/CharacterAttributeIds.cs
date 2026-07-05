@@ -17,6 +17,12 @@ namespace Anchor.Character.Attributes
         /// <summary>每周结算时使用的基础愿望单增长。</summary>
         public const int WeeklyWishlistGrowth = 1004;
 
+        /// <summary>每周结算随机基础愿望单增长下限。</summary>
+        public const int WeeklyWishlistGrowthMin = 1056;
+
+        /// <summary>每周结算随机基础愿望单增长上限。</summary>
+        public const int WeeklyWishlistGrowthMax = 1057;
+
         /// <summary>当前 Bug 值。</summary>
         public const int Bug = 1005;
 
@@ -101,7 +107,7 @@ namespace Anchor.Character.Attributes
         /// <summary>愿望单增长量提高百分比。</summary>
         public const int WishlistGrowthPercentBonus = 1024;
 
-        /// <summary>每回合结束时画面值高于 60 时，愿望单增长量提高量。</summary>
+        /// <summary>每回合结束时画面值高于 60 时，愿望单增长量提高百分比。</summary>
         public const int HighVisualWeekEndWishlistGrowthBonus = 1025;
 
         /// <summary>同一回合在三个房间都消耗行动点时，愿望单增长量提高量。</summary>

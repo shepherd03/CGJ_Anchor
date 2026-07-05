@@ -10,6 +10,11 @@ namespace Anchor.Editor
     public static class LeaderboardPanelPrefabBuilder
     {
         private const string PrefabPath = "Assets/Prefabs/LeaderboardPanel.prefab";
+        private const float RankColumnWidth = 84f;
+        private const float QualityColumnWidth = 120f;
+        private const float WishlistColumnWidth = 200f;
+        private const float TimeColumnWidth = 190f;
+        private const float FlexibleInfoMinWidth = 300f;
 
         [MenuItem("Anchor/UI/Rebuild Leaderboard Panel Prefab")]
         public static void RebuildPrefab()
@@ -119,11 +124,11 @@ namespace Anchor.Editor
             layout.childForceExpandHeight = true;
             layout.childForceExpandWidth = false;
 
-            AddHeaderLabel(rect, "名次", 90f, TextAlignmentOptions.Center);
-            AddHeaderLabel(rect, "名称", 0f, TextAlignmentOptions.Left);
-            AddHeaderLabel(rect, "分数", 160f, TextAlignmentOptions.Center);
-            AddHeaderLabel(rect, "结局", 260f, TextAlignmentOptions.Center);
-            AddHeaderLabel(rect, "时间", 210f, TextAlignmentOptions.Center);
+            AddHeaderLabel(rect, "名次", RankColumnWidth, TextAlignmentOptions.Center);
+            AddHeaderLabel(rect, "结局", 0f, TextAlignmentOptions.Left);
+            AddHeaderLabel(rect, "质量分", QualityColumnWidth, TextAlignmentOptions.Center);
+            AddHeaderLabel(rect, "愿望单", WishlistColumnWidth, TextAlignmentOptions.Center);
+            AddHeaderLabel(rect, "完成时间", TimeColumnWidth, TextAlignmentOptions.Center);
         }
 
         private static ScrollRect CreateScrollView(RectTransform parent, out RectTransform rowRoot)
@@ -193,26 +198,27 @@ namespace Anchor.Editor
             layout.childForceExpandHeight = true;
             layout.childForceExpandWidth = false;
 
-            TextMeshProUGUI rankText = AddRowText(rect, "RankText", "1", 36, 90f, TextAlignmentOptions.Center);
+            TextMeshProUGUI rankText = AddRowText(rect, "RankText", "1", 36, RankColumnWidth, TextAlignmentOptions.Center);
             RectTransform infoStack = CreateInfoStack(rect);
-            TextMeshProUGUI nameText = CreateText("NameText", infoStack, "玩家", 30, FontStyles.Bold, TextAlignmentOptions.Left);
+            TextMeshProUGUI nameText = CreateText("NameText", infoStack, "好评如潮", 30, FontStyles.Bold, TextAlignmentOptions.Left);
             TextMeshProUGUI summaryText = CreateText("SummaryText", infoStack, "结局简介", 21, FontStyles.Normal, TextAlignmentOptions.Left);
-            TextMeshProUGUI scoreText = AddRowText(rect, "ScoreText", "9999", 34, 160f, TextAlignmentOptions.Center);
-            TextMeshProUGUI endingText = AddRowText(rect, "EndingText", "结局", 24, 260f, TextAlignmentOptions.Center);
-            TextMeshProUGUI timeText = AddRowText(rect, "TimeText", "2026/07/05", 22, 210f, TextAlignmentOptions.Center);
+            TextMeshProUGUI qualityText = AddRowText(rect, "QualityText", "82", 30, QualityColumnWidth, TextAlignmentOptions.Center);
+            TextMeshProUGUI wishlistText = AddRowText(rect, "WishlistText", "4,500,000", 28, WishlistColumnWidth, TextAlignmentOptions.Center);
+            TextMeshProUGUI timeText = AddRowText(rect, "TimeText", "2026/07/05", 22, TimeColumnWidth, TextAlignmentOptions.Center);
 
             nameText.color = Color.white;
             summaryText.color = new Color(0.76f, 0.84f, 0.92f, 0.86f);
             rankText.color = new Color(1f, 0.94f, 0.70f, 1f);
-            scoreText.color = new Color(0.52f, 0.86f, 1f, 1f);
-            endingText.color = new Color(0.90f, 0.94f, 1f, 1f);
+            qualityText.color = new Color(0.74f, 1f, 0.76f, 1f);
+            wishlistText.color = new Color(1f, 0.78f, 0.88f, 1f);
             timeText.color = new Color(0.72f, 0.78f, 0.86f, 1f);
 
             LeaderboardEntryView view = row.AddComponent<LeaderboardEntryView>();
             AssignObject(view, "rankText", rankText);
             AssignObject(view, "nameText", nameText);
-            AssignObject(view, "scoreText", scoreText);
-            AssignObject(view, "endingText", endingText);
+            AssignObject(view, "qualityText", qualityText);
+            AssignObject(view, "wishlistText", wishlistText);
+            AssignObject(view, "endingText", nameText);
             AssignObject(view, "timeText", timeText);
             AssignObject(view, "summaryText", summaryText);
             AssignObject(view, "backgroundImage", background);
@@ -238,7 +244,7 @@ namespace Anchor.Editor
 
             LayoutElement element = stackObject.AddComponent<LayoutElement>();
             element.flexibleWidth = 1f;
-            element.minWidth = 280f;
+            element.minWidth = FlexibleInfoMinWidth;
 
             VerticalLayoutGroup layout = stackObject.AddComponent<VerticalLayoutGroup>();
             layout.spacing = 3f;
@@ -265,7 +271,7 @@ namespace Anchor.Editor
             else
             {
                 element.flexibleWidth = 1f;
-                element.minWidth = 280f;
+                element.minWidth = FlexibleInfoMinWidth;
             }
         }
 

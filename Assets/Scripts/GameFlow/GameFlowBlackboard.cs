@@ -32,6 +32,8 @@ namespace Anchor.GameFlow
         public int CurrentWeekActionPower => GetInt(CharacterAttributeIds.WeeklyActionPower);
         public int MonthlyCoinIncome => GetInt(CharacterAttributeIds.MonthlyCoinIncome);
         public int WeeklyWishlistGrowth => GetInt(CharacterAttributeIds.WeeklyWishlistGrowth);
+        public int WeeklyWishlistGrowthMin => GetInt(CharacterAttributeIds.WeeklyWishlistGrowthMin);
+        public int WeeklyWishlistGrowthMax => GetInt(CharacterAttributeIds.WeeklyWishlistGrowthMax);
         public int Coins => GetInt(CharacterAttributeIds.Coins);
         public int WishlistCount => GetInt(CharacterAttributeIds.Wishlist);
         public int WeekStartWishlistCount => mWeekStartWishlistCount;
@@ -381,6 +383,11 @@ namespace Anchor.GameFlow
             AddWeeklyWishlistModifier(sourceName, WishlistModifierKind.Multiplier, percent);
         }
 
+        public int RollWeeklyWishlistGrowth()
+        {
+            return GetRandomSteppedInclusive(WeeklyWishlistGrowthMin, WeeklyWishlistGrowthMax, 10000);
+        }
+
         private int GetInt(int attributeId)
         {
             return (int)PlayerAttributes.Get(attributeId);
@@ -622,6 +629,28 @@ namespace Anchor.GameFlow
             return mRandom.Next(minValue, maxValue + 1);
         }
 
+        private int GetRandomSteppedInclusive(int minValue, int maxValue, int step)
+        {
+            if (step <= 1)
+            {
+                return GetRandomInclusive(minValue, maxValue);
+            }
+
+            if (minValue > maxValue)
+            {
+                (minValue, maxValue) = (maxValue, minValue);
+            }
+
+            var minStep = (int)Math.Ceiling(minValue / (double)step);
+            var maxStep = (int)Math.Floor(maxValue / (double)step);
+            if (minStep > maxStep)
+            {
+                return 0;
+            }
+
+            return GetRandomInclusive(minStep, maxStep) * step;
+        }
+
         private void AddClamped(int attributeId, int delta)
         {
             PlayerAttributes.Set(attributeId, Math.Max(0, PlayerAttributes.Get(attributeId) + delta));
@@ -648,6 +677,8 @@ namespace Anchor.GameFlow
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyActionPower);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.MonthlyCoinIncome);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyWishlistGrowth);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyWishlistGrowthMin);
+            mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.WeeklyWishlistGrowthMax);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Bug);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Visual);
             mAttributeCatalog.GetRequiredRow(CharacterAttributeIds.Atmosphere);

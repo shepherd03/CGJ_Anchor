@@ -471,7 +471,9 @@ namespace Anchor.UI.Panel
             {
                 case "hit": return 0;
                 case "boutique": return 1;
+                case "unnoticed":
                 case "buggy": return 2;
+                case "crash":
                 case "storm": return 3;
                 default:
                     Debug.LogWarning($"Unknown ending id '{endingId}', using slot 3 (storm).");

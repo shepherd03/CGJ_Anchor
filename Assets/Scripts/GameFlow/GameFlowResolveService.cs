@@ -6,7 +6,7 @@ namespace Anchor.GameFlow
 {
     public sealed class GameFlowResolveService
     {
-        private const int EndingQualityThreshold = 60;
+        private const int EndingQualityThreshold = 49;
         private const int EndingWishlistThreshold = 4_000_000;
 
         public WeekResolveResult ResolveWeek(GameFlowBlackboard blackboard)
@@ -96,7 +96,7 @@ namespace Anchor.GameFlow
 
             if (!hasHighQuality && !hasManyWishlists)
             {
-                return new EndingResult("unnoticed", "无人问津", "质量分低于上线标准，愿望单也没有形成足够声量。");
+                return new EndingResult("buggy", "无人问津", "质量分低于上线标准，愿望单也没有形成足够声量。");
             }
 
             if (hasHighQuality && !hasManyWishlists)
@@ -106,7 +106,7 @@ namespace Anchor.GameFlow
 
             if (!hasHighQuality)
             {
-                return new EndingResult("crash", "暴死结局", "愿望单很多，但质量分没有撑住正式上线。");
+                return new EndingResult("storm", "暴死结局", "愿望单很多，但质量分没有撑住正式上线。");
             }
 
             return new EndingResult("hit", "好评如潮", "质量和愿望单都达到了爆发线。");
@@ -147,6 +147,11 @@ namespace Anchor.GameFlow
             var modifiers = new List<WishlistModifier>(blackboard.WeeklyWishlistModifiers);
             var sortOrder = 10000;
 
+            if (blackboard.TotalWeekIndex > 1)
+            {
+                AddFlatModifier(modifiers, "周基础愿望增长", blackboard.RollWeeklyWishlistGrowth(), sortOrder++);
+            }
+
             if (blackboard.TotalWeekIndex == 3 ||
                 blackboard.TotalWeekIndex == 6 ||
                 blackboard.TotalWeekIndex == 9)
@@ -163,7 +168,7 @@ namespace Anchor.GameFlow
             var resolvedVisualScore = blackboard.VisualScore + visualDelta;
             if (resolvedVisualScore > 60)
             {
-                AddFlatModifier(modifiers, "高画面曝光奖励", blackboard.HighVisualWeekEndWishlistGrowthBonus, sortOrder++);
+                AddPercentModifier(modifiers, "高画面曝光奖励", blackboard.HighVisualWeekEndWishlistGrowthBonus, sortOrder++);
             }
 
             if (program > 0 && art > 0 && audio > 0)
@@ -187,6 +192,16 @@ namespace Anchor.GameFlow
             }
 
             modifiers.Add(new WishlistModifier(sourceName, WishlistModifierKind.Flat, value, sortOrder));
+        }
+
+        private static void AddPercentModifier(List<WishlistModifier> modifiers, string sourceName, int value, int sortOrder)
+        {
+            if (value == 0)
+            {
+                return;
+            }
+
+            modifiers.Add(new WishlistModifier(sourceName, WishlistModifierKind.Multiplier, value, sortOrder));
         }
 
         private static int ResolveWishlistModifiers(

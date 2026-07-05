@@ -152,7 +152,7 @@ namespace Anchor.UI.Panel
                     entry.QualityScore,
                     entry.WishlistCount,
                     entry.EndingDisplayName,
-                    FormatSavedRankingSummary(entry),
+                    entry.EndingSummary,
                     entry.CompletedAtUtcTicks));
             }
 
@@ -237,17 +237,6 @@ namespace Anchor.UI.Panel
             }
 
             return left.SourceIndex.CompareTo(right.SourceIndex);
-        }
-
-        private static string FormatSavedRankingSummary(GameLeaderboardEntry entry)
-        {
-            string stats = $"质量分 {entry.QualityScore} / 愿望单 {entry.WishlistCount:N0}";
-            if (string.IsNullOrWhiteSpace(entry.EndingSummary))
-            {
-                return stats;
-            }
-
-            return $"{stats} ｜ {entry.EndingSummary}";
         }
 
         private void ClearGeneratedRows()

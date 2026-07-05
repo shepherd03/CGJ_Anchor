@@ -15,10 +15,13 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("显示玩家、项目或结局名称的主文本。")]
         private TextMeshProUGUI nameText;
 
-        [SerializeField, Tooltip("显示分数的文本。")]
-        private TextMeshProUGUI scoreText;
+        [SerializeField, Tooltip("显示质量分的文本。")]
+        private TextMeshProUGUI qualityText;
 
-        [SerializeField, Tooltip("显示结局或补充标签的文本。")]
+        [SerializeField, Tooltip("显示愿望单数量的文本。")]
+        private TextMeshProUGUI wishlistText;
+
+        [SerializeField, Tooltip("显示结局的文本。")]
         private TextMeshProUGUI endingText;
 
         [SerializeField, Tooltip("显示完成时间的文本。")]
@@ -40,7 +43,8 @@ namespace Anchor.UI.Panel
         {
             SetText(rankText, rank.ToString());
             SetText(nameText, FormatName(rank, data));
-            SetText(scoreText, data.Score.ToString("N0"));
+            SetText(qualityText, FormatOptionalNumber(data.QualityScore));
+            SetText(wishlistText, FormatOptionalNumber(data.WishlistCount));
             SetText(endingText, string.IsNullOrWhiteSpace(data.EndingName) ? "未记录结局" : data.EndingName);
             SetText(timeText, FormatCompletedTime(data.CompletedAtUtcTicks));
             SetSummary(data.Summary);
@@ -90,6 +94,11 @@ namespace Anchor.UI.Panel
             return $"第 {rank} 名";
         }
 
+        private static string FormatOptionalNumber(int value)
+        {
+            return value > 0 ? value.ToString("N0") : "--";
+        }
+
         private static string FormatCompletedTime(long completedAtUtcTicks)
         {
             if (completedAtUtcTicks <= 0)
@@ -136,8 +145,11 @@ namespace Anchor.UI.Panel
                     case "NameText":
                         nameText = text;
                         break;
-                    case "ScoreText":
-                        scoreText = text;
+                    case "QualityText":
+                        qualityText = text;
+                        break;
+                    case "WishlistText":
+                        wishlistText = text;
                         break;
                     case "EndingText":
                         endingText = text;
