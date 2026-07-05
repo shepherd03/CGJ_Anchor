@@ -794,6 +794,9 @@ MonoBehaviour:
     releasedHoldDuration: 0.08
     ease: 6
   syncBaseScaleFromCurrentBeforeHover: 1
+  audioSource: {fileID: 0}
+  hoverSound: {fileID: 0}
+  pressedSound: {fileID: 0}
   disableBrightShadowEffectsWhenSpritePresent: 1
   preserveSpriteOriginalColor: 1
   brightShadowLuminanceThreshold: 0.6
@@ -1566,6 +1569,12 @@ MonoBehaviour:
   actionPointContainer: {fileID: 0}
   wishlistText: {fileID: 0}
   qualityText: {fileID: 0}
+  statusChangeScaleDuration: 0.12
+  statusChangeRestoreDuration: 0.18
+  statusIncreaseScale: 1.18
+  statusDecreaseScale: 0.88
+  statusIncreaseColor: {r: 0, g: 1, b: 0, a: 1}
+  statusDecreaseColor: {r: 1, g: 0, b: 0, a: 1}
   nextWeekButton: {fileID: 12819897}
 --- !u!1 &309423767
 GameObject:
@@ -5434,6 +5443,9 @@ MonoBehaviour:
     releasedHoldDuration: 0.08
     ease: 6
   syncBaseScaleFromCurrentBeforeHover: 1
+  audioSource: {fileID: 0}
+  hoverSound: {fileID: 0}
+  pressedSound: {fileID: 0}
   disableBrightShadowEffectsWhenSpritePresent: 1
   preserveSpriteOriginalColor: 1
   brightShadowLuminanceThreshold: 0.6
@@ -6222,6 +6234,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7c9da25818af4c30b4c9d1c287d6a60, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  bugText: {fileID: 0}
+  viewText: {fileID: 0}
+  audioText: {fileID: 0}
+  wishlistText: {fileID: 0}
   closeButton: {fileID: 2032365047}
 --- !u!1 &1494136285
 GameObject:
@@ -7169,6 +7185,9 @@ MonoBehaviour:
     releasedHoldDuration: 0.08
     ease: 6
   syncBaseScaleFromCurrentBeforeHover: 1
+  audioSource: {fileID: 0}
+  hoverSound: {fileID: 0}
+  pressedSound: {fileID: 0}
   disableBrightShadowEffectsWhenSpritePresent: 1
   preserveSpriteOriginalColor: 1
   brightShadowLuminanceThreshold: 0.6
@@ -7633,7 +7652,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 1
+  m_WasSpriteAssigned: 0
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!1 &1711686136

@@ -75,6 +75,8 @@ namespace Anchor.UI.Panel
         private readonly Dictionary<Transform, Vector3> statusTextOriginalScales = new Dictionary<Transform, Vector3>();
         private readonly HashSet<TMP_Text> statusTextsShowingDelta = new HashSet<TMP_Text>();
 
+        public TextMeshProUGUI WishlistText => wishlistText;
+
         /// <summary>
         /// Panel 启用时注册下一周按钮点击事件和流程数据刷新事件。
         /// </summary>

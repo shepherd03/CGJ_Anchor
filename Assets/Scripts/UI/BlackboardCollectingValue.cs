@@ -20,6 +20,8 @@ namespace Anchor.UI
 
         [Header("Blackboard")]
         [SerializeField] private ValueKind mValueKind;
+        [SerializeField, Tooltip("关闭后可由外部在指定时机手动播放，避免属性变化时提前触发。")]
+        private bool mListenToAttributeChanges = true;
 
         [Header("Persistent UI")]
         [SerializeField] private Image mTargetIcon;
@@ -61,6 +63,7 @@ namespace Anchor.UI
         private Tween mNumberTween;
         private Tween mGatherCallback;
         private float mLastCollectSoundTime = -10f;
+        private bool mIsManuallyConfigured;
 
         private int AttributeId => mValueKind == ValueKind.Budget
             ? CharacterAttributeIds.Coins
@@ -68,9 +71,13 @@ namespace Anchor.UI
 
         private IEnumerator Start()
         {
-            mAudioSource = GetComponent<AudioSource>();
-            mAudioSource.playOnAwake = false;
+            EnsureAudioSource();
             ApplyAppearance();
+
+            if (mIsManuallyConfigured)
+            {
+                yield break;
+            }
 
             yield return null;
             var blackboard = GameFlowRunner.Instance?.Controller?.Blackboard;
@@ -81,7 +88,10 @@ namespace Anchor.UI
             }
 
             mAttributes = blackboard.PlayerAttributes;
-            mAttributes.Changed += OnAttributeChanged;
+            if (mListenToAttributeChanges)
+            {
+                mAttributes.Changed += OnAttributeChanged;
+            }
             mDisplayedValue = mAttributes.Get(AttributeId);
             RenderValue(mDisplayedValue);
             mTestInput?.SetTextWithoutNotify(mDisplayedValue.ToString());
@@ -144,6 +154,7 @@ namespace Anchor.UI
 
         public void PlayTransition(int targetValue)
         {
+            EnsureAudioSource();
             if (targetValue <= mDisplayedValue)
             {
                 AnimateValue(targetValue);
@@ -176,6 +187,53 @@ namespace Anchor.UI
                 .SetTarget(this);
         }
 
+        /// <summary>
+        /// 从指定旧值手动播放一次散爆、收集和数值过渡。
+        /// </summary>
+        public void PlayTransition(int startValue, int targetValue)
+        {
+            mNumberTween?.Kill();
+            mGatherCallback?.Kill();
+            mDisplayedValue = Mathf.Max(0, startValue);
+            RenderValue(mDisplayedValue);
+            PlayTransition(Mathf.Max(0, targetValue));
+        }
+
+        /// <summary>
+        /// 将现有 HUD 的 Wishlist 图标和数值接入本组件，粒子会自动飞向图标所在位置。
+        /// </summary>
+        public void ConfigureManualWishlist(Image targetIcon, TMP_Text animatedValue, RectTransform effectLayer)
+        {
+            if (mAttributes != null && mListenToAttributeChanges)
+            {
+                mAttributes.Changed -= OnAttributeChanged;
+            }
+
+            mIsManuallyConfigured = true;
+            mValueKind = ValueKind.Wishlist;
+            mListenToAttributeChanges = false;
+            mTargetIcon = targetIcon;
+            mAnimatedValue = animatedValue;
+            mEffectLayer = effectLayer;
+            if (mIconSprite == null && targetIcon != null)
+            {
+                mIconSprite = targetIcon.sprite;
+            }
+
+            if (mParticleTemplate == null && effectLayer != null)
+            {
+                var templateObject = new GameObject("Wishlist Particle Template", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                templateObject.layer = gameObject.layer;
+                templateObject.transform.SetParent(effectLayer, false);
+                mParticleTemplate = templateObject.GetComponent<Image>();
+                mParticleTemplate.rectTransform.sizeDelta = new Vector2(42f, 42f);
+                mParticleTemplate.gameObject.SetActive(false);
+            }
+
+            EnsureAudioSource();
+            ApplyAppearance();
+        }
+
         private void CreateParticle(RectTransform layer, Vector2 destination)
         {
             var particle = Instantiate(mParticleTemplate, layer);
@@ -190,12 +248,13 @@ namespace Anchor.UI
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = mParticleTemplate.rectTransform.sizeDelta;
-            rect.anchoredPosition = Vector2.zero;
+            var origin = (Vector2)layer.InverseTransformPoint(transform.position);
+            rect.anchoredPosition = origin;
             rect.localScale = Vector3.zero;
 
             var angle = Random.Range(0f, Mathf.PI * 2f);
             var radius = Random.Range(mBurstRadius * 0.45f, mBurstRadius);
-            var burstPoint = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+            var burstPoint = origin + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
 
             DOTween.Sequence()
                 .SetDelay(Random.Range(0f, 0.1f))
@@ -264,6 +323,19 @@ namespace Anchor.UI
 
             mLastCollectSoundTime = Time.unscaledTime;
             mAudioSource.PlayOneShot(mCollectSound, mCollectVolume);
+        }
+
+        private void EnsureAudioSource()
+        {
+            if (mAudioSource == null)
+            {
+                mAudioSource = GetComponent<AudioSource>();
+            }
+
+            if (mAudioSource != null)
+            {
+                mAudioSource.playOnAwake = false;
+            }
         }
 
         private void ApplyAppearance()

@@ -1,10 +1,15 @@
+using System;
+using System.Collections.Generic;
 using Anchor.GameFlow;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
 
+[RequireComponent(typeof(AudioSource))]
 public sealed class SumPanelTestAnimator : MonoBehaviour
 {
+    public event Action Completed;
+
     [Header("Timing")]
     [SerializeField, Min(0f)] private float initialDelay = 0.15f;
     [SerializeField, Min(0f)] private float stepInterval = 0.12f;
@@ -14,11 +19,27 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
     [SerializeField, Min(0f)] private float group3ElementInterval = 0.07f;
     [SerializeField, Min(0f)] private float group4NumberInterval = 0.10f;
 
+    [Header("Wishlist Modifier Animation")]
+    [SerializeField, Min(0f)] private float group6OffsetY = 50f;
+    [SerializeField, Min(0.01f)] private float group6EnterDuration = 0.3f;
+    [SerializeField, Min(0.01f)] private float group6ExitDuration = 0.65f;
+    [SerializeField] private Ease group6EnterEase = Ease.OutCubic;
+    [SerializeField] private Ease group6ExitEase = Ease.InCubic;
+
     [Header("Motion")]
     [SerializeField, Min(0f)] private float enterOffsetY = 1200f;
     [SerializeField] private Ease moveEase = Ease.OutCubic;
     [SerializeField] private Ease numberEase = Ease.OutCubic;
     [SerializeField] private bool useUnscaledTime = true;
+
+    [Header("Audio")]
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip panelOpenSound;
+    [SerializeField, Range(0f, 1f)] private float panelOpenSoundVolume = 1f;
+    [SerializeField] private AudioClip group6EnterSound;
+    [SerializeField, Range(0f, 1f)] private float group6EnterSoundVolume = 1f;
+    [SerializeField] private AudioClip valueUpdateSound;
+    [SerializeField, Range(0f, 1f)] private float valueUpdateSoundVolume = 1f;
 
     [Header("Temporary default values")]
     [SerializeField] private int group4TargetValue = 88;
@@ -34,21 +55,27 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
     private RectTransform group3;
     private RectTransform group4;
     private RectTransform group5;
+    private RectTransform group6;
 
     private RectTransform[] group1Elements;
     private RectTransform[] group3Elements;
     private TMP_Text[] group4Numbers;
     private TMP_Text group5Number;
+    private TMP_Text bonusNameText;
+    private TMP_Text bonusValueText;
+    private CanvasGroup group6CanvasGroup;
 
     private Vector2 group0Position;
     private Vector2 group2Position;
     private Vector2[] group1Positions;
     private Vector2[] group3Positions;
+    private Vector2 group6Position;
     private Sequence openingSequence;
     private bool initialized;
 
     private void Awake()
     {
+        ResolveAudioSource();
         Initialize();
     }
 
@@ -76,11 +103,13 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
     {
         if (syncWithGameFlowDataOnPlay && TryGetCurrentBlackboard(out GameFlowBlackboard blackboard))
         {
+            WeekResolveResult weekResult = blackboard.LastWeekResult;
             Play(
                 blackboard.BugScore,
                 blackboard.VisualScore,
                 blackboard.AtmosphereScore,
-                blackboard.WishlistCount);
+                weekResult.WishlistStartValue,
+                weekResult.WishlistModifiersOrEmpty);
             return;
         }
 
@@ -100,6 +129,16 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
     /// </summary>
     public void Play(int bugValue, int viewValue, int audioValue, int wishlistValue)
     {
+        Play(bugValue, viewValue, audioValue, wishlistValue, null);
+    }
+
+    private void Play(
+        int bugValue,
+        int viewValue,
+        int audioValue,
+        int wishlistValue,
+        IReadOnlyList<WishlistModifierResult> wishlistModifiers)
+    {
         if (!Initialize())
         {
             return;
@@ -110,6 +149,7 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
 
         openingSequence?.Kill();
         ResetVisuals();
+        PlayPanelOpenSound();
 
         openingSequence = DOTween.Sequence()
             .SetTarget(this)
@@ -138,6 +178,14 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
 
         openingSequence.AppendCallback(() => group5Number.gameObject.SetActive(true));
         openingSequence.Append(CreateNumberTween(group5Number, wishlistValue));
+
+        if (wishlistModifiers != null && wishlistModifiers.Count > 0)
+        {
+            AppendStepInterval();
+            openingSequence.Append(CreateWishlistModifierSequence(wishlistModifiers));
+        }
+
+        openingSequence.OnComplete(() => Completed?.Invoke());
     }
 
     /// <summary>
@@ -162,11 +210,12 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
         group3 = FindGroup("Group3");
         group4 = FindGroup("Group4");
         group5 = FindGroup("Group5");
+        group6 = FindGroup("Group6");
 
         if (group0 == null || group1 == null || group2 == null ||
-            group3 == null || group4 == null || group5 == null)
+            group3 == null || group4 == null || group5 == null || group6 == null)
         {
-            Debug.LogError("SumPanelTestAnimator: Group0-Group5 hierarchy is incomplete.", this);
+            Debug.LogError("SumPanelTestAnimator: Group0-Group6 hierarchy is incomplete.", this);
             return false;
         }
 
@@ -174,11 +223,19 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
         group3Elements = GetDirectRectChildren(group3);
         group4Numbers = GetDirectTextChildren(group4);
         group5Number = group5.childCount > 0 ? group5.GetChild(0).GetComponent<TMP_Text>() : null;
+        bonusNameText = group6.Find("BonusName")?.GetComponent<TMP_Text>();
+        bonusValueText = group6.Find("Bonus")?.GetComponent<TMP_Text>();
+        group6CanvasGroup = group6.GetComponent<CanvasGroup>();
+        if (group6CanvasGroup == null)
+        {
+            group6CanvasGroup = group6.gameObject.AddComponent<CanvasGroup>();
+        }
 
         if (group1Elements.Length != 5 || group3Elements.Length != 3 ||
-            group4Numbers.Length != 3 || group5Number == null)
+            group4Numbers.Length != 3 || group5Number == null ||
+            bonusNameText == null || bonusValueText == null)
         {
-            Debug.LogError("SumPanelTestAnimator: Expected Group1=5 children, Group3=3 children, Group4=3 TMP texts, Group5=1 TMP text.", this);
+            Debug.LogError("SumPanelTestAnimator: Expected Group1=5 children, Group3=3 children, Group4=3 TMP texts, Group5=1 TMP text, and Group6 BonusName/Bonus TMP texts.", this);
             return false;
         }
 
@@ -186,6 +243,7 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
         group2Position = group2.anchoredPosition;
         group1Positions = CapturePositions(group1Elements);
         group3Positions = CapturePositions(group3Elements);
+        group6Position = group6.anchoredPosition;
         initialized = true;
         return true;
     }
@@ -198,6 +256,8 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
         Kill(group3Elements);
         Kill(group4Numbers);
         group5Number.DOKill();
+        group6.DOKill();
+        group6CanvasGroup.DOKill();
 
         group0.anchoredPosition = Below(group0Position);
         group2.anchoredPosition = Below(group2Position);
@@ -212,6 +272,10 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
 
         group5Number.text = "0";
         group5Number.gameObject.SetActive(false);
+
+        group6.anchoredPosition = group6Position - Vector2.up * group6OffsetY;
+        group6CanvasGroup.alpha = 0f;
+        group6.gameObject.SetActive(false);
     }
 
     private Tween CreateMoveTween(RectTransform target, Vector2 destination)
@@ -249,6 +313,44 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
         return sequence;
     }
 
+    private Sequence CreateWishlistModifierSequence(IReadOnlyList<WishlistModifierResult> modifiers)
+    {
+        Sequence sequence = DOTween.Sequence();
+
+        for (int i = 0; i < modifiers.Count; i++)
+        {
+            WishlistModifierResult modifier = modifiers[i];
+
+            sequence.AppendCallback(() =>
+            {
+                bonusNameText.text = modifier.SourceName;
+                bonusValueText.text = modifier.DisplayValue;
+                group6.anchoredPosition = group6Position - Vector2.up * group6OffsetY;
+                group6CanvasGroup.alpha = 0f;
+                group6.gameObject.SetActive(true);
+                PlayGroup6EnterSound();
+            });
+
+            sequence.Append(group6.DOAnchorPos(group6Position, group6EnterDuration)
+                .SetEase(group6EnterEase));
+            sequence.Join(group6CanvasGroup.DOFade(1f, group6EnterDuration));
+
+            sequence.Append(CreateNumberTween(
+                group5Number,
+                modifier.BeforeWishlistCount,
+                modifier.AfterWishlistCount,
+                group6ExitDuration));
+            sequence.Join(group6.DOAnchorPos(
+                    group6Position + Vector2.up * group6OffsetY,
+                    group6ExitDuration)
+                .SetEase(group6ExitEase));
+            sequence.Join(group6CanvasGroup.DOFade(0f, group6ExitDuration));
+            sequence.AppendCallback(() => group6.gameObject.SetActive(false));
+        }
+
+        return sequence;
+    }
+
     /// <summary>
     /// 获取当前游戏流程黑板，和 MainPanel、WeekPanel 使用同一份流程数据。
     /// </summary>
@@ -263,8 +365,12 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
 
     private Tween CreateNumberTween(TMP_Text label, int targetValue)
     {
-        int displayedValue = 0;
-        label.text = "0";
+        return CreateNumberTween(label, 0, targetValue, numberDuration);
+    }
+
+    private Tween CreateNumberTween(TMP_Text label, int startValue, int targetValue, float duration)
+    {
+        int displayedValue = startValue;
 
         return DOTween.To(
                 () => displayedValue,
@@ -274,8 +380,56 @@ public sealed class SumPanelTestAnimator : MonoBehaviour
                     label.text = value.ToString("N0");
                 },
                 targetValue,
-                numberDuration)
-            .SetEase(numberEase);
+                duration)
+            .SetEase(numberEase)
+            .OnStart(() =>
+            {
+                displayedValue = startValue;
+                label.text = startValue.ToString("N0");
+                PlayValueUpdateSound();
+            });
+    }
+
+    public void PlayPanelOpenSound()
+    {
+        PlayOneShot(panelOpenSound, panelOpenSoundVolume);
+    }
+
+    public void PlayGroup6EnterSound()
+    {
+        PlayOneShot(group6EnterSound, group6EnterSoundVolume);
+    }
+
+    public void PlayValueUpdateSound()
+    {
+        PlayOneShot(valueUpdateSound, valueUpdateSoundVolume);
+    }
+
+    private void ResolveAudioSource()
+    {
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+        }
+
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
+
+        if (audioSource != null)
+        {
+            audioSource.playOnAwake = false;
+        }
+    }
+
+    private void PlayOneShot(AudioClip clip, float volume)
+    {
+        ResolveAudioSource();
+        if (audioSource != null && clip != null)
+        {
+            audioSource.PlayOneShot(clip, volume);
+        }
     }
 
     private void AppendStepInterval()
