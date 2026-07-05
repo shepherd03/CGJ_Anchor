@@ -338,6 +338,15 @@ EventKit.Type.Register<MonthSettledEvent>(OnMonthSettled);
 EventKit.Type.Register<GameEndingSelectedEvent>(OnEndingSelected);
 ```
 
+排行榜接口：
+
+```csharp
+var rankings = GameLeaderboardService.GetRankings();
+var top10 = GameLeaderboardService.GetRankings(10);
+```
+
+每次进入结局状态时，流程会自动记录当前 `WishlistCount` 和对应结局。`GetRankings` 返回值已经按愿望单数量从大到小排序，UI 可以直接读取 `Rank`、`WishlistCount`、`EndingId`、`EndingDisplayName` 和 `CompletedAtUtc` 展示。
+
 监听玩家属性变化：
 
 ```csharp
