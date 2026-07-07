@@ -316,6 +316,7 @@ public sealed class ButtonPrefabSpawner : MonoBehaviour
 
         targetActiveState = isActive;
         CacheFloatingUIComponents();
+        EventKit.Type.Send(new FloatingUITargetStateChangedEvent(this, isActive));
 
         if (isActive)
         {

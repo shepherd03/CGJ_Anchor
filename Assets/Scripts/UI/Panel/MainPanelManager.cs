@@ -74,6 +74,7 @@ namespace Anchor.UI.Panel
         private readonly Dictionary<TMP_Text, Color> statusTextOriginalColors = new Dictionary<TMP_Text, Color>();
         private readonly Dictionary<Transform, Vector3> statusTextOriginalScales = new Dictionary<Transform, Vector3>();
         private readonly HashSet<TMP_Text> statusTextsShowingDelta = new HashSet<TMP_Text>();
+        private readonly HashSet<ButtonPrefabSpawner> openFloatingUIToggles = new HashSet<ButtonPrefabSpawner>();
 
         public TextMeshProUGUI WishlistText => wishlistText;
 
@@ -103,12 +104,14 @@ namespace Anchor.UI.Panel
         public void Open(Action closedCallback = null)
         {
             onClosed = closedCallback;
+            openFloatingUIToggles.Clear();
 
             if (!gameObject.activeSelf)
             {
                 gameObject.SetActive(true);
             }
 
+            UpdateNextWeekButtonVisibility();
             RefreshStatusText();
         }
 
@@ -216,8 +219,10 @@ namespace Anchor.UI.Panel
         {
             EventKit.Type.UnRegister<CharacterAttributeChangedEvent>(OnPlayerAttributeChanged);
             EventKit.Type.UnRegister<GameFlowStateChangedEvent>(OnGameFlowStateChanged);
+            EventKit.Type.UnRegister<FloatingUITargetStateChangedEvent>(OnFloatingUITargetStateChanged);
             EventKit.Type.Register<CharacterAttributeChangedEvent>(OnPlayerAttributeChanged);
             EventKit.Type.Register<GameFlowStateChangedEvent>(OnGameFlowStateChanged);
+            EventKit.Type.Register<FloatingUITargetStateChangedEvent>(OnFloatingUITargetStateChanged);
         }
 
         /// <summary>
@@ -227,6 +232,42 @@ namespace Anchor.UI.Panel
         {
             EventKit.Type.UnRegister<CharacterAttributeChangedEvent>(OnPlayerAttributeChanged);
             EventKit.Type.UnRegister<GameFlowStateChangedEvent>(OnGameFlowStateChanged);
+            EventKit.Type.UnRegister<FloatingUITargetStateChangedEvent>(OnFloatingUITargetStateChanged);
+            openFloatingUIToggles.Clear();
+            UpdateNextWeekButtonVisibility();
+        }
+
+        /// <summary>
+        /// 房间 Floating UI 打开时隐藏 NextWeek，全部关闭后恢复显示。
+        /// </summary>
+        private void OnFloatingUITargetStateChanged(FloatingUITargetStateChangedEvent stateChangedEvent)
+        {
+            if (stateChangedEvent.Source == null)
+            {
+                return;
+            }
+
+            if (stateChangedEvent.IsOpen)
+            {
+                openFloatingUIToggles.Add(stateChangedEvent.Source);
+            }
+            else
+            {
+                openFloatingUIToggles.Remove(stateChangedEvent.Source);
+            }
+
+            UpdateNextWeekButtonVisibility();
+        }
+
+        /// <summary>
+        /// 根据当前是否有展开的 Floating UI 控制下一周按钮显示。
+        /// </summary>
+        private void UpdateNextWeekButtonVisibility()
+        {
+            if (nextWeekButton != null)
+            {
+                nextWeekButton.gameObject.SetActive(openFloatingUIToggles.Count == 0);
+            }
         }
 
         /// <summary>

@@ -1087,6 +1087,13 @@ MonoBehaviour:
   dollarDecreaseColor: {r: 1, g: 0, b: 0, a: 1}
   closeButton: {fileID: 5329649666438974164}
   refreshButton: {fileID: 147076519733242155}
+  audioSource: {fileID: 0}
+  panelOpenSound: {fileID: 8300000, guid: 5c54854a4deabd54cb0f6dcf6728b3d9, type: 3}
+  panelOpenSoundVolume: 1
+  purchaseSuccessSound: {fileID: 8300000, guid: 5df0556c45610e84c8c658f67285a83e, type: 3}
+  purchaseSuccessSoundVolume: 1
+  purchaseFailedSound: {fileID: 8300000, guid: b6d9d6c2c735358458d01b9f201b5a38, type: 3}
+  purchaseFailedSoundVolume: 1
 --- !u!1 &3673928542369067158
 GameObject:
   m_ObjectHideFlags: 0

@@ -61,6 +61,28 @@ namespace Anchor.UI.Panel
         [SerializeField, Tooltip("点击后刷新当前月初商店 Buff 候选列表的按钮。")]
         private Button refreshButton;
 
+        [Header("Audio")]
+        [SerializeField, Tooltip("商店面板播放一次性 UI 音效使用的 AudioSource。为空时运行时自动补一个。")]
+        private AudioSource audioSource;
+
+        [SerializeField, Tooltip("商店面板滑入时播放。")]
+        private AudioClip panelOpenSound;
+
+        [SerializeField, Range(0f, 1f), Tooltip("商店面板滑入音效音量。")]
+        private float panelOpenSoundVolume = 1f;
+
+        [SerializeField, Tooltip("购买成功时播放。")]
+        private AudioClip purchaseSuccessSound;
+
+        [SerializeField, Range(0f, 1f), Tooltip("购买成功音效音量。")]
+        private float purchaseSuccessSoundVolume = 1f;
+
+        [SerializeField, Tooltip("购买失败时播放。")]
+        private AudioClip purchaseFailedSound;
+
+        [SerializeField, Range(0f, 1f), Tooltip("购买失败音效音量。")]
+        private float purchaseFailedSoundVolume = 1f;
+
         // 当前由面板动态生成的 BuffCard，用于重新注入数据时清理旧实例。
         private readonly List<BuffCardController> generatedBuffCards = new List<BuffCardController>();
         // 是否已经记录过上一帧金币值；首次刷新只同步文本，不播放涨跌动画。
@@ -124,6 +146,7 @@ namespace Anchor.UI.Panel
         {
             onClosed = closedCallback;
             EnsureBuffWindowAnimator();
+            EnsureAudioSource();
 
             if (buffWindowAnimator == null)
             {
@@ -139,6 +162,7 @@ namespace Anchor.UI.Panel
             ResetRefreshButtonForOpen();
             RefreshDollarText();
             RequestBudgetShopBuffOffersRefresh();
+            PlayOneShot(panelOpenSound, panelOpenSoundVolume);
             buffWindowAnimator.Open();
         }
 
@@ -816,12 +840,59 @@ namespace Anchor.UI.Panel
 
             if (!runner.TryPurchaseBudgetShopBuff(buffRow.Id, out BuffPurchaseResult result))
             {
+                PlayOneShot(purchaseFailedSound, purchaseFailedSoundVolume);
                 Debug.LogWarning($"{nameof(WindowShopPanelManager)} failed to purchase Buff {buffRow.Id}: {result.Status}. {result.Message}", this);
                 return;
             }
 
+            PlayOneShot(purchaseSuccessSound, purchaseSuccessSoundVolume);
             InjectData(runner.CurrentBudgetShopBuffOffers);
             introductionWindow.Close();
+        }
+
+        /// <summary>
+        /// 查找并缓存商店面板音效使用的 AudioSource；运行时缺失时自动补齐。
+        /// </summary>
+        private void EnsureAudioSource()
+        {
+            if (audioSource == null)
+            {
+                audioSource = GetComponent<AudioSource>();
+            }
+
+            if (audioSource == null)
+            {
+                audioSource = GetComponentInChildren<AudioSource>(true);
+            }
+
+            if (audioSource == null && Application.isPlaying)
+            {
+                audioSource = gameObject.AddComponent<AudioSource>();
+            }
+
+            if (audioSource != null)
+            {
+                audioSource.playOnAwake = false;
+                audioSource.loop = false;
+                audioSource.spatialBlend = 0f;
+            }
+        }
+
+        /// <summary>
+        /// 播放一次性商店 UI 音效。
+        /// </summary>
+        private void PlayOneShot(AudioClip clip, float volume)
+        {
+            if (clip == null)
+            {
+                return;
+            }
+
+            EnsureAudioSource();
+            if (audioSource != null)
+            {
+                audioSource.PlayOneShot(clip, volume);
+            }
         }
 
         /// <summary>

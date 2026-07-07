@@ -256,7 +256,7 @@ namespace Anchor.Audio
             AudioSource activeSource = primaryIsActive ? primarySource : secondarySource;
             if (activeSource != null && activeSource.clip != null)
             {
-                loopRoutine = StartCoroutine(LoopWithFade(activeSource));
+                loopRoutine = StartCoroutine(LoopWithoutOverlap(activeSource));
             }
         }
 
@@ -269,55 +269,25 @@ namespace Anchor.Audio
             }
         }
 
-        private IEnumerator LoopWithFade(AudioSource activeSource)
+        private IEnumerator LoopWithoutOverlap(AudioSource activeSource)
         {
             while (activeSource != null && activeSource.clip != null)
             {
                 AudioClip clip = activeSource.clip;
-                float waitSeconds = Mathf.Max(0f, clip.length - Mathf.Max(0f, fadeDuration));
+                float waitSeconds = Mathf.Max(0f, clip.length);
                 yield return new WaitForSecondsRealtime(waitSeconds);
 
-                AudioSource nextSource = activeSource == primarySource ? secondarySource : primarySource;
-                yield return CrossFadeLoop(activeSource, nextSource, clip, fadeDuration);
+                if (activeSource == null || activeSource.clip != clip)
+                {
+                    yield break;
+                }
 
-                activeSource = nextSource;
-            }
-        }
-
-        private IEnumerator CrossFadeLoop(AudioSource fromSource, AudioSource toSource, AudioClip clip, float duration)
-        {
-            float fromStartVolume = fromSource.isPlaying ? fromSource.volume : 0f;
-            toSource.clip = clip;
-            toSource.volume = 0f;
-            toSource.time = 0f;
-            toSource.Play();
-
-            if (duration <= 0f)
-            {
-                fromSource.Stop();
-                fromSource.volume = 0f;
-                toSource.volume = volume;
-                primaryIsActive = toSource == primarySource;
+                activeSource.Stop();
+                activeSource.time = 0f;
+                activeSource.volume = volume;
+                activeSource.Play();
                 currentClip = clip;
-                yield break;
             }
-
-            float elapsed = 0f;
-            while (elapsed < duration)
-            {
-                elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(elapsed / duration);
-                fromSource.volume = Mathf.Lerp(fromStartVolume, 0f, t);
-                toSource.volume = Mathf.Lerp(0f, volume, t);
-                yield return null;
-            }
-
-            fromSource.Stop();
-            fromSource.volume = 0f;
-            toSource.volume = volume;
-
-            primaryIsActive = toSource == primarySource;
-            currentClip = clip;
         }
 
         private void AutoAssignEditorClips()
